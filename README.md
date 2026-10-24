@@ -11,7 +11,7 @@ reference-based page dumps (`e1`, `e2`, …), guards against the failure modes s
 actually hit, and attaches to a real Chrome over CDP — so a 4B model running locally can
 navigate, fill forms, and complete multi-step tasks without drowning in context.
 
-> 🇹🇷 Turkish documentation (detailed engineering log): [README.tr.md](README.tr.md)
+> 🇹🇷 Turkish documentation (detailed engineering log): [TURKCE.md](TURKCE.md)
 
 ## Why Gemma E4B
 

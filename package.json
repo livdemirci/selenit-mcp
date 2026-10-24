@@ -1,6 +1,6 @@
 {
   "name": "selenit-mcp",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Browser automation MCP server tuned for small local models like Gemma E4B: compact e1-style element refs, loop guards, CDP attach to your Chrome, audit log. Selenium-based, 23 tools.",
   "license": "MIT",
   "repository": {
