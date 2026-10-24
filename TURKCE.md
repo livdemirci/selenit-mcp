@@ -134,6 +134,22 @@ Her araç çağrısı `artifacts/audit-YYYYMMDD.jsonl` dosyasına yazılır
 
 ### Tek komutla kurulum
 
+**Tek satır** — Ruby, gem ve Chrome'u kontrol eder/kurar, MCP kaydını yazar:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/livdemirci/selenit-mcp/main/install.sh | bash
+```
+
+Ruby 3.2+ zaten varsa (ya da yalnızca npm tercih ediliyorsa):
+
+```bash
+npx -y selenit-mcp setup lmstudio --install     # ruby+gem+Chrome kontrol/kurulum + config
+npx -y selenit-mcp doctor                       # ruby/gem/Chrome/config/port raporu
+```
+
+`--install`, eksikse `brew install ruby` / `gem install selenium-webdriver` dener; Chrome için
+`--install-chrome` ekleyin. `--install` vermeden `setup` yalnızca config yazar ve eksikleri söyler.
+
 **npm (npx) ile** (Ruby kaynakları paketle gelir):
 
 ```bash

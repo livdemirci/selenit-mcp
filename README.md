@@ -145,7 +145,24 @@ text truncated).
 
 ## Install
 
-**npm (npx)** — Ruby sources ship inside the package:
+**One command** — checks/installs Ruby, the gem and Chrome, then registers the MCP server:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/livdemirci/selenit-mcp/main/install.sh | bash
+```
+
+If Ruby 3.2+ is already present (or you prefer npm only):
+
+```bash
+npx -y selenit-mcp setup lmstudio --install     # ruby+gem+Chrome check/install + config
+npx -y selenit-mcp doctor                       # report ruby/gem/Chrome/config/port
+```
+
+`--install` attempts `brew install ruby` / `gem install selenium-webdriver` when something is
+missing; add `--install-chrome` to also install Chrome via Homebrew. Without `--install`, `setup`
+only writes the config and tells you what is missing.
+
+**npm only** — Ruby sources ship inside the package:
 
 ```bash
 gem install selenium-webdriver        # requirement (not bundled)
