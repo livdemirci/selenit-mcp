@@ -1,0 +1,40 @@
+{
+  "name": "selenit-mcp",
+  "version": "0.2.0",
+  "description": "Küçük yerel modellerle verimli çalışmak için Selenium tabanlı hafif tarayıcı MCP sunucusu: 23 araç, CDP attach (mevcut Chrome'a bağlanır), kompakt öğe dökümü, döngü uyarısı koruması",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/livdemirci/selenit-mcp.git"
+  },
+  "bin": {
+    "selenit-mcp": "bin/npm-wrapper.js"
+  },
+  "files": [
+    "bin/npm-wrapper.js",
+    "server.rb",
+    "browser.rb",
+    "audit.rb",
+    "policy.rb",
+    "snapshot.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "mcp",
+    "selenium",
+    "browser",
+    "automation",
+    "chrome",
+    "cdp",
+    "llm",
+    "local-model"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ]
+}

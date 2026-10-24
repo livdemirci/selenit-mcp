@@ -129,6 +129,18 @@ Her araç çağrısı `artifacts/audit-YYYYMMDD.jsonl` dosyasına yazılır
 
 ### Tek komutla kurulum
 
+**npm (npx) ile** (Ruby kaynakları paketle gelir):
+
+```bash
+gem install selenium-webdriver        # gereksinim (pakete gelmez)
+npx selenit-mcp                        # stdio MCP sunucusu — test: hazır satırı basar
+```
+
+MCP istemcisi config'inde `"command": "npx", "args": ["-y", "selenit-mcp"]` doldurun;
+Ruby'yi açıkça göstermek için env'e `"SLENIT_RUBY"` eklenebilir.
+
+**Kaynak koddan:**
+
 ```bash
 git clone https://github.com/livdemirci/selenit-mcp.git
 cd selenit-mcp

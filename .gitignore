@@ -5,3 +5,5 @@ tmp/
 .DS_Store
 *.screen
 .ipynb_checkpoints/
+*.tgz
+node_modules/
