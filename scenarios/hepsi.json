@@ -1,0 +1,86 @@
+{
+  "task": "hepsi",
+  "desc": "Hepsiburada: arama → en düşük fiyat → ilk satılabilir ürünü sepete ekle → sepette fiyat doğrulama",
+  "recorded_at": "2026-10-24T21:03:23+0300",
+  "model": "google/gemma-4-e4b",
+  "answer": "ürün | Apple Airpods 4. Nesil (MXP63TU/A) | 6.365,00 TL | eşleşme: evet | toast: okuma",
+  "final_url": "https://checkout.hepsiburada.com/sepetim",
+  "assert_js": null,
+  "assert_value": null,
+  "steps": [
+    {
+      "tool": "browser_navigate",
+      "args": {
+        "url": "https://www.hepsiburada.com"
+      },
+      "selector": null
+    },
+    {
+      "tool": "browser_type",
+      "args": {
+        "selector": "input[aria-label='Site içinde ara']",
+        "text": "kulaklık",
+        "submit": true
+      },
+      "selector": null
+    },
+    {
+      "tool": "browser_type",
+      "args": {
+        "selector": "input[aria-label='Site içinde ara']",
+        "submit": true,
+        "text": "kulaklık"
+      },
+      "selector": null
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "selector": "div[class*='dropdown-cf']"
+      },
+      "selector": null
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e9"
+      },
+      "selector": "#i0 > article:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(3) > svg:nth-of-type(1)"
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e4"
+      },
+      "selector": "#sponBrands_687dd4ff-1824-4c08-a348-4b29f69583b3 > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(2)"
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "text": "En düşük fiyat"
+      },
+      "selector": null
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e15"
+      },
+      "selector": "#i1 > article:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > svg:nth-of-type(1)"
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e14"
+      },
+      "selector": "a[href=\"/redmi-buds-6-play-siyah-kulakici-kulaklik-tws-xiaomi-turkiye-garantili-p-HBCV000072PXK3\"]"
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e1"
+      },
+      "selector": "a[href=\"https://checkout.hepsiburada.com/sepetim\"]"
+    }
+  ]
+}

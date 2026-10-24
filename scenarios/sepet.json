@@ -1,0 +1,84 @@
+{
+  "task": "sepet",
+  "desc": "Trendyol: arama → en düşük fiyat → sepete ekle → sepette fiyat doğrulama",
+  "recorded_at": "2026-10-23T22:50:57+0300",
+  "model": "google/gemma-4-e4b",
+  "answer": "ürün | CEPFİT Boostar Mikrofonlu Kulakiçi Kulaklık Siyah | kart fiyatı: 57,97 TL | sepet fiyatı: 57,97 TL | eşleşme: evet | sst var mı: evet",
+  "final_url": "https://www.trendyol.com/sepetim",
+  "assert_js": null,
+  "assert_value": null,
+  "steps": [
+    {
+      "tool": "browser_navigate",
+      "args": {
+        "url": "https://www.trendyol.com"
+      },
+      "selector": null
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e2"
+      },
+      "selector": "#onetrust-reject-all-handler"
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e7"
+      },
+      "selector": "[data-testid=\"suggestion-placeholder\"]"
+    },
+    {
+      "tool": "browser_type",
+      "args": {
+        "ref": "e28",
+        "submit": true,
+        "text": "kulaklık"
+      },
+      "selector": "[data-testid=\"browsing-search-input\"]"
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e27"
+      },
+      "selector": "[data-testid=\"web-sort-options\"] > div:nth-of-type(1) > button:nth-of-type(1)"
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e35"
+      },
+      "selector": "#select-option-PRICE_BY_ASC"
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "Sepete Ekle"
+      },
+      "selector": null
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "text": "Sepete Ekle"
+      },
+      "selector": null
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e7"
+      },
+      "selector": "a[href=\"/sepetim\"]"
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "text": "Sepete Ekle"
+      },
+      "selector": null
+    }
+  ]
+}

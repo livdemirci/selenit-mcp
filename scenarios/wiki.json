@@ -1,0 +1,28 @@
+{
+  "task": "wiki",
+  "desc": "Vikipedi'de arama yap",
+  "recorded_at": "2026-10-23T08:16:26+0300",
+  "model": "google/gemma-4-e4b",
+  "answer": "Açılan sayfanın başlığı \"Alan Turing - Vikipedi\"dir.",
+  "final_url": "https://tr.wikipedia.org/wiki/Alan_Turing",
+  "assert_js": null,
+  "assert_value": null,
+  "steps": [
+    {
+      "tool": "browser_navigate",
+      "args": {
+        "url": "https://tr.wikipedia.org"
+      },
+      "selector": null
+    },
+    {
+      "tool": "browser_type",
+      "args": {
+        "ref": "e3",
+        "text": "Alan Turing",
+        "submit": true
+      },
+      "selector": "#searchInput"
+    }
+  ]
+}

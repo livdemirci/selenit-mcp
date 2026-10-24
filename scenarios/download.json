@@ -1,0 +1,33 @@
+{
+  "task": "download",
+  "desc": "PDF indirmeyi bekle ve dosya adını doğrula",
+  "recorded_at": "2026-10-23T08:08:51+0300",
+  "model": "google/gemma-4-e4b",
+  "answer": "İndirme tamamlandı ve indirilen dosyanın adı `agent_rapor.pdf`'dir.",
+  "final_url": "http://127.0.0.1:8765/",
+  "assert_js": "return String(document.title)",
+  "assert_value": "Zor Senaryolar",
+  "steps": [
+    {
+      "tool": "browser_navigate",
+      "args": {
+        "url": "http://127.0.0.1:8765/"
+      },
+      "selector": null
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e9"
+      },
+      "selector": "a[href=\"/download\"]"
+    },
+    {
+      "tool": "browser_wait_for",
+      "args": {
+        "type": "download"
+      },
+      "selector": null
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "task": "upload",
+  "desc": "dosya yükleme alanına dosya ver",
+  "recorded_at": "2026-10-23T08:05:51+0300",
+  "model": "google/gemma-4-e4b",
+  "answer": "Evet, dosya adı (C:\\fakepath\\agent_upload.txt) yükleme alanında görünüyordu.",
+  "final_url": "http://127.0.0.1:8765/upload",
+  "assert_js": "return String(((document.getElementById('out')||{}).textContent||'').indexOf('agent_upload.txt') >= 0)",
+  "assert_value": "true",
+  "steps": [
+    {
+      "tool": "browser_navigate",
+      "args": {
+        "url": "http://127.0.0.1:8765/upload"
+      },
+      "selector": null
+    },
+    {
+      "tool": "browser_upload",
+      "args": {
+        "path": "/tmp/agent_upload.txt",
+        "ref": "e1"
+      },
+      "selector": "#file"
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e2"
+      },
+      "selector": "#up"
+    }
+  ]
+}

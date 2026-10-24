@@ -1,0 +1,49 @@
+{
+  "task": "filter",
+  "desc": "tabloda ara, satırı düzenle, kaydet",
+  "recorded_at": "2026-10-23T08:02:36+0300",
+  "model": "google/gemma-4-e4b",
+  "answer": "Ada Lovelace'ın durumu başarıyla 'Aktif' olarak güncellendi ve kaydedildi.",
+  "final_url": "http://127.0.0.1:8765/dashboard",
+  "assert_js": "var rows = Array.from(document.querySelectorAll('#tbody tr'));\nvar ok = rows.some(function (r) {\n  var st = r.querySelector('.st');\n  return r.innerText.indexOf('Ada') >= 0 && st && st.textContent.trim() === 'Aktif';\n});\nvar m = document.getElementById('modal');\nreturn String(ok && m && !m.classList.contains('open'));\n",
+  "assert_value": "true",
+  "steps": [
+    {
+      "tool": "browser_navigate",
+      "args": {
+        "url": "http://127.0.0.1:8765/dashboard"
+      },
+      "selector": null
+    },
+    {
+      "tool": "browser_type",
+      "args": {
+        "ref": "e1",
+        "text": "Ada"
+      },
+      "selector": "#search"
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e4"
+      },
+      "selector": "#tbody tr[data-id=\"10\"] button"
+    },
+    {
+      "tool": "browser_select",
+      "args": {
+        "ref": "e1",
+        "label": "Aktif"
+      },
+      "selector": "#status"
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e2"
+      },
+      "selector": "#save"
+    }
+  ]
+}

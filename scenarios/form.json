@@ -1,0 +1,34 @@
+{
+  "task": "form",
+  "desc": "test formunu doldur ve gönder",
+  "recorded_at": "2026-10-23T07:56:56+0300",
+  "model": "google/gemma-4-e4b",
+  "answer": "Sayfa başlığı 'Gemma' oldu.",
+  "final_url": "data:text/html,<title>Form</title><input name=ad placeholder='Ad'><button onclick=\"document.title=document.querySelector('input').value\">G%C3%B6nder</button>",
+  "assert_js": null,
+  "assert_value": null,
+  "steps": [
+    {
+      "tool": "browser_navigate",
+      "args": {
+        "url": "data:text/html,<title>Form</title><input name=ad placeholder='Ad'><button onclick=\"document.title=document.querySelector('input').value\">Gönder</button>"
+      },
+      "selector": null
+    },
+    {
+      "tool": "browser_type",
+      "args": {
+        "ref": "e1",
+        "text": "Gemma"
+      },
+      "selector": "input[name=\"ad\"]"
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e2"
+      },
+      "selector": "html:nth-of-type(1) > body:nth-of-type(1) > button:nth-of-type(1)"
+    }
+  ]
+}

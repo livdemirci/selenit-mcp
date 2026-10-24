@@ -1,0 +1,27 @@
+{
+  "task": "select",
+  "desc": "açılır listeden seçenek seç",
+  "recorded_at": "2026-10-23T07:59:37+0300",
+  "model": "google/gemma-4-e4b",
+  "answer": "Seçilen renk Mavi'dir ve değeri 'mavi' olarak ayarlanmıştır.",
+  "final_url": "data:text/html,<title>Renk</title><select><option value=kirmizi>K%C4%B1rm%C4%B1z%C4%B1</option><option value=mavi>Mavi</option></select>",
+  "assert_js": null,
+  "assert_value": null,
+  "steps": [
+    {
+      "tool": "browser_navigate",
+      "args": {
+        "url": "data:text/html,<title>Renk</title><select><option value=kirmizi>Kırmızı</option><option value=mavi>Mavi</option></select>"
+      },
+      "selector": null
+    },
+    {
+      "tool": "browser_select",
+      "args": {
+        "label": "Mavi",
+        "ref": "e1"
+      },
+      "selector": "html:nth-of-type(1) > body:nth-of-type(1) > select:nth-of-type(1)"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "task": "shadow",
+  "desc": "shadow DOM içindeki alana yaz",
+  "recorded_at": "2026-10-23T08:04:47+0300",
+  "model": "google/gemma-4-e4b",
+  "answer": "Mesaj kutusuna 'merhaba' yazıldı ve ardından 'Onayla' düğmesine basıldı. Sayfada herhangi bir yeni görsel değişiklik veya sonuç görünmemektedir.",
+  "final_url": "http://127.0.0.1:8765/shadow",
+  "assert_js": "var t=((document.getElementById('result')||{}).textContent||'').toLowerCase(); return String(t.indexOf('shadow sonuç')>=0 && t.indexOf('merhaba')>=0)",
+  "assert_value": "true",
+  "steps": [
+    {
+      "tool": "browser_navigate",
+      "args": {
+        "url": "http://127.0.0.1:8765/shadow"
+      },
+      "selector": null
+    },
+    {
+      "tool": "browser_type",
+      "args": {
+        "ref": "e1",
+        "text": "merhaba"
+      },
+      "selector": "shadow::html:nth-of-type(1) > body:nth-of-type(1) > my-widget:nth-of-type(1)||#msg"
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e2"
+      },
+      "selector": "shadow::html:nth-of-type(1) > body:nth-of-type(1) > my-widget:nth-of-type(1)||#ok"
+    }
+  ]
+}

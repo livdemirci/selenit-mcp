@@ -1,0 +1,19 @@
+{
+  "task": "read",
+  "desc": "sayfa metnini oku ve özetle",
+  "recorded_at": "2026-10-23T07:59:12+0300",
+  "model": "google/gemma-4-e4b",
+  "answer": "Bu alan adı, izin gerektirmeden dokümantasyon örneklerinde kullanılmak üzere tasarlanmış bir örnektir ve test veya izleme amaçlı bir hizmet olarak görülmemelidir.",
+  "final_url": "https://example.com/",
+  "assert_js": null,
+  "assert_value": null,
+  "steps": [
+    {
+      "tool": "browser_navigate",
+      "args": {
+        "url": "https://example.com"
+      },
+      "selector": null
+    }
+  ]
+}

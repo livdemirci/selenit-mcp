@@ -1,0 +1,42 @@
+{
+  "task": "login",
+  "desc": "kullanıcı adı/parola ile oturum aç",
+  "recorded_at": "2026-10-23T08:01:28+0300",
+  "model": "google/gemma-4-e4b",
+  "answer": "Giriş başarılı oldu ve şu anda \"Panel\" sayfasındasınız (URL: http://127.0.0.1:8765/dashboard).",
+  "final_url": "http://127.0.0.1:8765/dashboard",
+  "assert_js": "return String(location.pathname === '/dashboard' && localStorage.getItem('auth') === '1')",
+  "assert_value": "true",
+  "steps": [
+    {
+      "tool": "browser_navigate",
+      "args": {
+        "url": "http://127.0.0.1:8765/login"
+      },
+      "selector": null
+    },
+    {
+      "tool": "browser_type",
+      "args": {
+        "ref": "e1",
+        "text": "demo"
+      },
+      "selector": "#user"
+    },
+    {
+      "tool": "browser_type",
+      "args": {
+        "ref": "e2",
+        "text": "demo123"
+      },
+      "selector": "#pass"
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e3"
+      },
+      "selector": "#f > button:nth-of-type(1)"
+    }
+  ]
+}

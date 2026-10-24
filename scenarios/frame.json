@@ -1,0 +1,49 @@
+{
+  "task": "frame",
+  "desc": "iframe içindeki formu doldur",
+  "recorded_at": "2026-10-23T08:03:53+0300",
+  "model": "google/gemma-4-e4b",
+  "answer": "Görev tamamlandı. Form gönderildi ve ana sayfaya dönüldüğünde alınan sonuç \"Ada\"dır.",
+  "final_url": "http://127.0.0.1:8765/frame",
+  "assert_js": "return String(((document.getElementById('result')||{}).textContent||'').indexOf('Sonuç: Ada') >= 0)",
+  "assert_value": "true",
+  "steps": [
+    {
+      "tool": "browser_navigate",
+      "args": {
+        "url": "http://127.0.0.1:8765/frame"
+      },
+      "selector": null
+    },
+    {
+      "tool": "browser_frame",
+      "args": {
+        "action": "enter",
+        "ref": "e1"
+      },
+      "selector": "#frm"
+    },
+    {
+      "tool": "browser_type",
+      "args": {
+        "ref": "e1",
+        "text": "Ada"
+      },
+      "selector": "#ad"
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e2"
+      },
+      "selector": "#f > button:nth-of-type(1)"
+    },
+    {
+      "tool": "browser_frame",
+      "args": {
+        "action": "main"
+      },
+      "selector": null
+    }
+  ]
+}

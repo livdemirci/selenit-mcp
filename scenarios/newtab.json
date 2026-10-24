@@ -1,0 +1,35 @@
+{
+  "task": "newtab",
+  "desc": "yeni sekmede açılan sayfaya geç",
+  "recorded_at": "2026-10-23T08:06:59+0300",
+  "model": "google/gemma-4-e4b",
+  "answer": "Gizli değer \"gizli-deger-42\"dir.",
+  "final_url": "http://127.0.0.1:8765/tab2",
+  "assert_js": null,
+  "assert_value": null,
+  "steps": [
+    {
+      "tool": "browser_navigate",
+      "args": {
+        "url": "http://127.0.0.1:8765/tabs"
+      },
+      "selector": null
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e1"
+      },
+      "selector": "a[href=\"/tab2\"]"
+    },
+    {
+      "tool": "browser_tabs",
+      "args": {
+        "action": "switch",
+        "index": 1
+      },
+      "selector": null,
+      "tab_url": "http://127.0.0.1:8765/tab2"
+    }
+  ]
+}

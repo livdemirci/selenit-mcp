@@ -1,0 +1,33 @@
+{
+  "task": "alert",
+  "desc": "JS uyarı penceresini kapat",
+  "recorded_at": "2026-10-23T08:00:10+0300",
+  "model": "google/gemma-4-e4b",
+  "answer": "Uyarı penceresi açıldı ve metni \"merhaba\" idi.",
+  "final_url": "data:text/html,<title>Uyari</title><button onclick=\"alert('merhaba')\">Uyar</button>",
+  "assert_js": null,
+  "assert_value": null,
+  "steps": [
+    {
+      "tool": "browser_navigate",
+      "args": {
+        "url": "data:text/html,<title>Uyari</title><button onclick=\"alert('merhaba')\">Uyar</button>"
+      },
+      "selector": null
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e1"
+      },
+      "selector": "html:nth-of-type(1) > body:nth-of-type(1) > button:nth-of-type(1)"
+    },
+    {
+      "tool": "browser_alert",
+      "args": {
+        "action": "text"
+      },
+      "selector": null
+    }
+  ]
+}

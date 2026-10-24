@@ -1,0 +1,19 @@
+{
+  "task": "hn",
+  "desc": "Hacker News'te en üstteki 3 başlığı listele",
+  "recorded_at": "2026-10-23T07:58:05+0300",
+  "model": "google/gemma-4-e4b",
+  "answer": "İşte en üstteki 3 haber başlığı:\n\n1. Docker is weird (codeandcake.dev)\n2. LLMs are making formal software verification feasible at a much larger scale\n3. Quad9 (DNS Resolver) to Exit France",
+  "final_url": "https://news.ycombinator.com/",
+  "assert_js": null,
+  "assert_value": null,
+  "steps": [
+    {
+      "tool": "browser_navigate",
+      "args": {
+        "url": "https://news.ycombinator.com"
+      },
+      "selector": null
+    }
+  ]
+}

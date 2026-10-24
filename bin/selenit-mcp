@@ -1,0 +1,5 @@
+#!/usr/bin/env ruby
+# selenit-mcp stdio sunucusu: MCP istemcileri bu tek dosyayı armağan eder.
+#   ruby bin/selenit-mcp
+# Gereksinimler: ruby >= 3.2, gem selenium-webdriver, Google Chrome.
+require File.expand_path("../server.rb", __dir__)

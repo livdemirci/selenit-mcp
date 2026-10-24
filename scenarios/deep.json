@@ -1,0 +1,26 @@
+{
+  "task": "deep",
+  "desc": "uzun sayfada metne göre bağlantı bul ve tıkla",
+  "recorded_at": "2026-10-23T07:58:35+0300",
+  "model": "google/gemma-4-e4b",
+  "answer": "Sayfanın başlığı \"Turing machine - Wikipedia\"dır.",
+  "final_url": "https://en.wikipedia.org/wiki/Turing_machine",
+  "assert_js": null,
+  "assert_value": null,
+  "steps": [
+    {
+      "tool": "browser_navigate",
+      "args": {
+        "url": "https://en.wikipedia.org/wiki/Alan_Turing"
+      },
+      "selector": null
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "f1"
+      },
+      "selector": "a[href=\"https://en.wikipedia.org/wiki/Turing_machine\"]"
+    }
+  ]
+}

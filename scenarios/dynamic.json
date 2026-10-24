@@ -1,0 +1,33 @@
+{
+  "task": "dynamic",
+  "desc": "dinamik içeriği bekle, kaydır, say",
+  "recorded_at": "2026-10-23T08:08:17+0300",
+  "model": "google/gemma-4-e4b",
+  "answer": "Toplam 15 kayıt bulunmaktadır.",
+  "final_url": "http://127.0.0.1:8765/dynamic",
+  "assert_js": "return String(document.querySelectorAll('#list li').length >= 10)",
+  "assert_value": "true",
+  "steps": [
+    {
+      "tool": "browser_navigate",
+      "args": {
+        "url": "http://127.0.0.1:8765/dynamic"
+      },
+      "selector": null
+    },
+    {
+      "tool": "browser_scroll",
+      "args": {
+        "direction": "down"
+      },
+      "selector": null
+    },
+    {
+      "tool": "browser_scroll",
+      "args": {
+        "direction": "down"
+      },
+      "selector": null
+    }
+  ]
+}

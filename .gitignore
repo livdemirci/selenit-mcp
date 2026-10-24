@@ -1,0 +1,7 @@
+Gemfile.lock
+artifacts/
+tmp/
+*.log
+.DS_Store
+*.screen
+.ipynb_checkpoints/
