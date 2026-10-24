@@ -1,7 +1,7 @@
 {
   "name": "selenit-mcp",
-  "version": "0.2.0",
-  "description": "Küçük yerel modellerle verimli çalışmak için Selenium tabanlı hafif tarayıcı MCP sunucusu: 23 araç, CDP attach (mevcut Chrome'a bağlanır), kompakt öğe dökümü, döngü uyarısı koruması",
+  "version": "0.2.1",
+  "description": "Browser automation MCP server tuned for small local models like Gemma E4B: compact e1-style element refs, loop guards, CDP attach to your Chrome, audit log. Selenium-based, 23 tools.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -22,13 +22,17 @@
   ],
   "keywords": [
     "mcp",
+    "model-context-protocol",
     "selenium",
-    "browser",
-    "automation",
+    "browser-automation",
+    "gemma",
+    "gemma-4",
+    "e4b",
+    "local-llm",
+    "lm-studio",
     "chrome",
     "cdp",
-    "llm",
-    "local-model"
+    "web-automation"
   ],
   "engines": {
     "node": ">=18"
