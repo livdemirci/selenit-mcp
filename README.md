@@ -1,5 +1,8 @@
 # selenit-mcp
 
+[![npm](https://img.shields.io/npm/v/selenit-mcp.svg)](https://www.npmjs.com/package/selenit-mcp)
+[![license](https://img.shields.io/npm/l/selenit-mcp.svg)](LICENSE)
+
 Küçük yerel modellerle (**Gemma E4B**) verimli çalışmak için tasarlanmış,
 Selenium tabanlı hafif bir tarayıcı MCP sunucusu. Playwright MCP'den esinlenilmiştir;
 çıktılar kısa, öğeler `e1, e2, ...` referanslarıyla listelenir, ham HTML dökülmez.
