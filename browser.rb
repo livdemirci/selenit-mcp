@@ -540,6 +540,14 @@ class SelenitBrowser
     raise "value veya label gerekli" if value.nil? && label.nil?
 
     element = resolve(ref, selector, nil, wait: :visible)
+    # Küçük modeller sık sık düğme ref'ini select alanında kullanıyor;
+    # Selenium'un ham "unexpected tag name" hatası yerine etiketi söyle.
+    tag = (element.tag_name rescue nil).to_s.downcase
+    if tag != "select"
+      return "HATA (select #{ref || selector}): bu öğe bir <select> değil, <#{tag}>.\n" \
+             "İpucu: normal <select> alanını browser_select ile seç; rol taşmayan özel açılır " \
+             "menülerde ise önce browser_click ile menüyü AÇ, sonra görünen seçenek ref'ini browser_click ile seç.\n#{snapshot_text}"
+    end
     sel = Selenium::WebDriver::Support::Select.new(element)
     if label
       sel.select_by(:text, label.to_s)
@@ -1641,6 +1649,9 @@ class SelenitBrowser
         "öğe görünür değil; browser_scroll veya browser_find dene."
       when Selenium::WebDriver::Error::UnexpectedAlertOpenError
         "açık JS uyarısı var; önce browser_alert(accept) veya browser_alert(dismiss) çağır."
+      when Selenium::WebDriver::Error::InvalidElementStateError, Selenium::WebDriver::Error::InvalidSelectorError
+        "geçersiz CSS seçici; q/selector bir CSS seçicidir (örn: button, li, a[title='Aç']). " \
+        "Metne göre arama için browser_find(text: ...) kullan."
       else
         "önce browser_snapshot çağırıp ref'i doğrula."
       end

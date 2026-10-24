@@ -27,14 +27,14 @@ Selenium tabanlı hafif bir tarayıcı MCP sunucusu. Playwright MCP'den esinleni
 | Tüketici | Port | Profil |
 |---|---|---|
 | OpenCode (bu asistan) | `19417` | `artifacts/chrome-profile-19417` |
-| LM Studio eklentisi | `19418` | `artifacts/chrome-profile-19418` |
+| LM Studio eklentisi | `19419` | `artifacts/chrome-profile-19419` |
 | Benchmark / replay | `19420` | `artifacts/chrome-profile-19420` |
 | selenit / kullanıcı Chrome | `19218` | kullanıcının kendi profili |
 
 Aynı porta iki sunucu bağlanmaya çalışırsa Chrome kilitlenir; bu yüzden her tüketici ayrı port kullanır.
 
 > **Uyarı:** 19218 portu selenit'ın kullandığı porttur. Ajanın kullanıcının tarayıcısını
-> sürüklemesini istemiyorsanız ayrı port kullanın (varsayılan öneri: **19418**).
+> sürüklemesini istemiyorsanız ayrı port kullanın (varsayılan öneri: **19419**).
 > Normal açılmış bir Chrome'a sonradan güvenilir biçimde bağlanılamaz; remote-debugging şarttır.
 
 ## Araçlar (23)
@@ -67,7 +67,9 @@ Aynı porta iki sunucu bağlanmaya çalışırsa Chrome kilitlenir; bu yüzden h
 
 Küçük modeller için güvenlik ağları:
 - **Döngü uyarısı:** aynı araç+argüman 3. kez gelirse çalıştırılmaz, uyarı döner.
-- **Anlaşılır hatalar:** "ref her snapshot'ta yenilenir", "öğe kapalı", "uyarı açık" gibi ipuçları.
+- **Anlaşılır hatalar:** "ref her snapshot'ta yenilenir", "öğe kapalı", "uyarı açık" gibi ipuçları;
+  select alanına yanlış etiket verilince `bu öğe bir <select> değil, <button>` der, geçersiz
+  CSS seçicide örnekli ipucu döner.
 - **Uyarı temizliği:** `navigate` açık JS uyarısını kapatır; `snapshot`/`read` açık uyarıyı bildirir.
 - **Shadow DOM:** döküm açık shadow root'ları gezer; ref çözümleme JS ile yapılır (Selenium CSS araması shadow'a girmez).
 - **Modal odağı:** `role=dialog` / `aria-modal` açıkken yalnızca modal içeriği listelenir; arka plan düğmeleri karışmaz. 2026-10: role taşmayan modallar da (`class*="modal|dialog|popup"` + görünüp ekran merkezini kapatma) yakalanır — Trendyol'un `.modal-container`'ı gibi.
@@ -204,7 +206,8 @@ ruby replay.rb sepet                    # senaryo tekrarı (gerçek site)
 
 ## LM Studio kaydı
 
-`~/.lmstudio/mcp.json`:
+`~/.lmstudio/mcp.json` (mutlak ruby yolu + `cwd` kullanın; LM Studio GUI'den
+başlatıldığında rbenv shim'i PATH'te olmayabilir):
 
 ```json
 {
@@ -213,11 +216,15 @@ ruby replay.rb sepet                    # senaryo tekrarı (gerçek site)
       "command": "/Users/mustafalivdemirci/.rbenv/versions/3.4.8/bin/ruby",
       "args": ["/Users/mustafalivdemirci/Documents/Varsayılan Proje/selenit_mcp/server.rb"],
       "cwd": "/Users/mustafalivdemirci/Documents/Varsayılan Proje/selenit_mcp",
-      "env": { "BROWSER_MCP_PORT": "19418", "BROWSER_MCP_MAX_ELEMENTS": "40" }
+      "env": { "BROWSER_MCP_PORT": "19419", "BROWSER_MCP_MAX_ELEMENTS": "40" }
     }
   }
 }
 ```
+
+Not: Aynı makinede birden çok tarayıcı MCP eklentisi varsa her biri ayrı port
+kullanmalı (ör. testwise-browser 19418, selenit 19419); aksi halde ikisi aynı
+Chrome'a bağlanıp sekmeleri çiğner.
 
 LM Studio'da sohbet kutusunun solundaki **🔌 Integrations** düğmesinden açılıp kapatılır.
 Ayar değişikliği LM Studio yeniden başlatılınca (veya yeni sohbet oturumunda) yüklenir.
@@ -480,7 +487,7 @@ LLM her koşuda para/zaman harcamasın diye başarılı keşif **deterministik**
 ```bash
 ruby replay.rb filter                 # LLM'siz tekrar
 ruby export_rspec.rb filter           # spec/generated/filter_spec.rb
-BROWSER_MCP_PORT=19418 rspec spec/generated/filter_spec.rb
+BROWSER_MCP_PORT=19419 rspec spec/generated/filter_spec.rb
 ```
 
 Bu üçlü, Playwright MCP'de olmayan şeyi verir: **keşfi bir kez yap, sonra sıfır maliyetle
