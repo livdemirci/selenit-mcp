@@ -182,8 +182,17 @@ Claude Desktop / any MCP client (`claude_desktop_config.json`):
 }
 ```
 
-LM Studio (`~/.lmstudio/mcp.json`) — use an absolute Ruby path and `cwd`; a GUI-launched
-LM Studio may not have rbenv shims on `PATH`:
+LM Studio — let the package write the entry itself (it resolves the absolute Ruby path, the
+package path, and backs up your existing config):
+
+```bash
+npx -y selenit-mcp setup lmstudio                 # default port 19419
+npx -y selenit-mcp setup lmstudio --port 19418 --max-elements 20
+npx -y selenit-mcp setup print                    # JSON only, paste it yourself
+```
+
+Then restart LM Studio (or toggle **Integrations**). Manual equivalent — an absolute Ruby path
+and `cwd` are required because a GUI-launched LM Studio may not have rbenv shims on `PATH`:
 
 ```json
 {

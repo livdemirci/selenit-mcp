@@ -223,8 +223,19 @@ ruby replay.rb sepet                    # senaryo tekrarı (gerçek site)
 
 ## LM Studio kaydı
 
-`~/.lmstudio/mcp.json` (mutlak ruby yolu + `cwd` kullanın; LM Studio GUI'den
-başlatıldığında rbenv shim'i PATH'te olmayabilir):
+Paket kendini config'e ekleyebilir (mutlak ruby yolunu ve paket yolunu çözer, mevcut dosyayı
+`mcp.json.backup-<zaman>` olarak yedekler):
+
+```bash
+npx -y selenit-mcp setup lmstudio              # varsayılan port 19419
+npx -y selenit-mcp setup lmstudio --port 19418 --max-elements 20
+npx -y selenit-mcp setup print                 # yalnızca JSON bas
+```
+
+Sonra LM Studio'da **🔌 Integrations**'ı kapat-aç veya uygulamayı yeniden başlat.
+
+Elle yapmak isterseniz `~/.lmstudio/mcp.json` (mutlak ruby yolu + `cwd` kullanın; LM Studio
+GUI'den başlatıldığında rbenv shim'i PATH'te olmayabilir):
 
 ```json
 {
