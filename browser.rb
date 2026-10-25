@@ -293,6 +293,7 @@ class SelenitBrowser
     wait_until(timeout: @wait_timeout, message: "sayfa gövdesi yüklenmedi: #{target}") do
       driver.execute_script("return !!(document.body && document.body.nodeType === 1)")
     end
+    settle_interactive
     note = dismissed ? "not: açık uyarı kapatıldı (#{dismissed})\n" : ""
     note + snapshot_text(header: true)
   rescue Policy::Denied => e
@@ -442,6 +443,27 @@ class SelenitBrowser
       end
       element.send_keys(text.to_s)
       element.send_keys(:enter) if submit
+      # JS tabanlı aramalar (form yok, keydown dinleyicisi yok): Enter hiçbir
+      # şey yapmaz. n11.com'da ölçüldü — form yok, arama ikonu `I.new-search-icon`
+      # input'un kardeşi. Enter denendikten sonra URL değişmediyse ve input
+      # içindeysek, en yakın submit-benzeri kontrolü tıkla.
+      if submit && %w[input textarea].include?(element.tag_name)
+        begin
+          wait_until(timeout: 1.5) { driver.current_url != url_before_type }
+        rescue Selenium::WebDriver::Error::TimeoutError
+          # 1) form / submit ikonu
+          cozuldu = false
+          if (submit_click = js_submit_click(element))
+            sleep 0.4
+            cozuldu = driver.current_url != url_before_type
+          end
+          # 2) hâlâ değişmediyse: URL şemasıyla arama (JS event yutuluyorsa)
+          unless cozuldu
+            via = submit_via_url(element, text)
+            resume_after_js_action if via
+          end
+        end
+      end
     rescue Selenium::WebDriver::Error::StaleElementReferenceError
       # Otomatik tamamlama/arama kutusu DOM'u yenileyebilir; öğeyi yeniden
       # çözüp yazmayı bir kez tekrarla. Seçici yoksa odaktaki metin alanını
@@ -669,6 +691,114 @@ class SelenitBrowser
     error("press_key", e, key)
   end
 
+  # SPA/asenkron render oturması: body hazır olsa da header, arama kutusu ve
+  # nav JS ile sonradan gelir. n11.com ölçümü: navigate dump'ı arama kutusunu
+  # KAÇIRIYOR, 1 sn sonraki snapshot görüyor. Sabit sleep yerine etkileşimli
+  # öğe sayısının iki ölçüm arasında stabil kalmasını bekle.
+  # Bütçe: en fazla SETTLE_MS kadar; sayfa zaten stabilsen ~0 ek maliyet.
+  SETTLE_MS = 900
+  SETTLE_STEP = 0.15
+
+  def settle_interactive
+    onceki = -1
+    sabit = 0
+    bekle = 0.0
+    script = "return document.querySelectorAll('a[href],button,input,textarea,select').length"
+    while bekle < SETTLE_MS / 1000.0
+      simdi = driver.execute_script(script).to_i
+      if simdi == onceki && simdi > 0
+        sabit += 1
+        break if sabit >= 2 # iki ardışık ölçüm aynı → oturdu
+      else
+        sabit = 0
+      end
+      onceki = simdi
+      sleep SETTLE_STEP
+      bekle += SETTLE_STEP
+    end
+    true
+  rescue StandardError
+    nil
+  end
+
+  # Form submit eden bir form yoksa (JS tabanlı arama): input'un kardeşi olan
+  # submit-benzeri kontrolü (button/i[class*=search]) JS ile tıkla. Selenium
+  # click'i ikon (I) elementlerinde güvenilir değil; JS click daha geniş.
+  # Dönüş: tıklanan elementin kısa tanımı veya nil.
+  def js_submit_click(element)
+    script = <<~JS
+      var el = arguments[0];
+      if (!el) return '';
+      var form = el.closest('form');
+      if (form) { try { form.requestSubmit ? form.requestSubmit() : form.submit(); } catch (e) {} return 'form'; }
+      var scope = el.parentElement || el;
+      for (var up = 0; up < 3 && scope; up++, scope = scope.parentElement) {
+        var aday = scope.querySelector(
+          'button[type=submit],input[type=submit],button,' +
+          '[class*="search-icon" i],[class*="searchBtn" i],[class*="search-btn" i],' +
+          '[class*="ara" i][role=button],[aria-label*="ara" i],[aria-label*="search" i]'
+        );
+        if (aday && aday !== el) { aday.click(); return aday.tagName + '.' + (aday.className || ''); }
+      }
+      return '';
+    JS
+    driver.execute_script(script, element).to_s
+  rescue StandardError
+    nil
+  end
+
+  # Son çare: arama alanını URL şemasıyla doldur.
+  # n11.com ölçümü: form yok, buton yok, öneri listesi yok; Enter ve native
+  # KeyboardEvent yutuluyor (site Selenium üretimi event'leri kabul etmiyor).
+  # Ama /arama?q=<terim> doğrudan çalışıyor (52 ürün, doğru başlık).
+  # Genel kural: submit denendikten sonra URL değişmediyse, kök alan adına
+  # yaygın arama yollarını dene ve gerçekten sonuç döneni kullan.
+  ARAMA_YOLLARI = ["/arama?q=%s", "/search?q=%s", "/?s=%s", "/search?s=%s"].freeze
+
+  def submit_via_url(element, text)
+    kok = begin
+      u = URI.parse(driver.current_url.to_s)
+      "#{u.scheme}://#{u.host}"
+    rescue StandardError
+      nil
+    end
+    return nil if kok.nil? || text.to_s.strip.empty?
+
+    onceki_url = driver.current_url
+    terim = URI.encode_www_form_component(text.to_s.strip)
+    ARAMA_YOLLARI.each do |yol|
+      aday = kok + format(yol, terim)
+      begin
+        driver.navigate.to(aday)
+        wait_ready
+        settle_interactive
+        # Gerçekten sonuç sayfası mı: URL değişti ve gövde dolu mu?
+        sonuc = driver.execute_script(
+          "return document.querySelectorAll('a[href],button').length"
+        ).to_i
+        next if driver.current_url == onceki_url || sonuc < 10
+
+        return aday
+      rescue StandardError
+        next
+      end
+    end
+    nil
+  end
+
+  # JS tetiklemeli gezinmeden sonra sayfanın oturmasını bekle (sabit sleep yok).
+  def resume_after_js_action
+    wait_ready
+    begin
+      wait_until(timeout: @wait_timeout) { !driver.current_url.to_s.empty? }
+    rescue StandardError
+      nil
+    end
+    true
+  rescue StandardError
+    nil
+  end
+
   # Pencere boyutu: küçük modeller çıktıyı doğrularken kaydırmayı azaltmak
   # için sayfayı genişçe tutmak ister; tutarlı koşul için boyutu sabitleme.
   def resize(width, height)
@@ -679,7 +809,6 @@ class SelenitBrowser
   rescue StandardError => e
     error("resize", e, "#{width}x#{height}")
   end
-
   # --- WebDriver BiDi: ağ + konsol olayları -------------------------------
 
   # Selenium Ruby gem'inin BiDi::Network#on sarmalayıcısı bozuk (events

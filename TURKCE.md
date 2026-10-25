@@ -628,6 +628,38 @@ açık tarayıcısına dokunmaz. Model yavaşsa ilk çağrı 20–40 sn sürebil
 Özet: **genel amaçlı bulut modeli + zengin artefakt** senaryosunda Playwright MCP daha güçlü;
 **yerel küçük model + mevcut oturum + denetim + deterministik regresyon** senaryosunda bu sunucu daha uygun.
 
+### 8. tur: n11.com — dump önceliği ve JS submit (canlı e-ticaret ölçümü)
+
+Gerçek bir e-ticaret sitesinde (n11.com) uçtan uca senaryo koşuldu; dört ayrı kusur
+çıktı ve hepsi **siteye özgü değil, genel**:
+
+1. **Arama kutusu dump'a hiç girmiyordu.** n11 ana sayfasında **485 etkileşimli
+   öğe** var; ürün kartı önceliği 40 slotun tamamını doldurup header'daki arama
+   kutusuna hiç sıra bırakmıyordu. `snapshot.js` sıralaması değişti:
+   **form alanları → birincil eylem düğmeleri → overlay → ürün kartı → gerisi.**
+2. **"Sepete Ekle" dump'a girmiyordu.** Ürün sayfasında öneri karuselleri bütçeyi
+   yiyor, sayfanın kendi `BUTTON.add-to-cart-btn` düğmesi dışarıda kalıyordu.
+   Birincil eylem sınıfı eklendi (`sepete ekle|satın al|kaydet|gönder|öde` +
+   `add-to-cart|buy-now|checkout|primary`). Düzeltme sonrası düğme **`e2`**.
+3. **`navigate` yarış koşulu.** `document.body` hazır olması SPA render'ının
+   bittiği anlamına gelmiyor: navigate dump'ı arama kutusunu kaçırıyor, 1 sn
+   sonraki snapshot görüyordu. Yeni `settle_interactive`: etkileşimli öğe sayısı
+   **iki ardışık ölçümde aynı** olana kadar bekle (tavan ~0,9 sn, sabit sleep yok).
+4. **`submit: true` JS tabanlı aramada çalışmıyordu.** n11'de `<form>` yok,
+   düğme yok, öneri listesi yok; hem `send_keys(:enter)` hem elle gönderilen
+   native `KeyboardEvent` **yutuluyor**. Üç kademeli yedek eklendi:
+   Enter → form/`submit-like` kontrolün **JS click**'i → **URL şeması**
+   (`/arama?q=`, `/search?q=`, `/?s=`, `/search?s=`), ilk sonuç veren kabul
+   edilir (soft-404'ü elemek için gövdede ≥10 etkileşimli öğe koşulu).
+
+Ölçüm: ana sayfa → arama kutusu `e1` (1,6 sn) → arama+submit 5,7 sn (**42 ürün**)
+→ ürün sayfasında `e2 button Sepete Ekle` → tıklama 4,5 sn → `/sepetim`.
+**Gemma 4 E4B aynı akışı 2 adımda, 77 sn'de tamamladı** (ürün adı + fiyat doğru).
+Regresyon: smoke **32/32**, replay bozulmadı.
+
+Ders: dump'ı **bayt boyutuyla** değil, **modelin ihtiyaç duyduğu öğenin orada olup
+olmadığıyla** değerlendirin. 4 KB'lık dump büyürken arama kutusu hâlâ eksik olabilir.
+
 ## Gemma E4B için ipuçları
 
 - Modelden **tek adım** isteyin: `browser_navigate` → `browser_snapshot` → `browser_click`.

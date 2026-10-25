@@ -116,6 +116,27 @@ its own port.
   `downloads-manager` shadow root, waits for `IN_PROGRESS` to finish, and returns the file path.
 - **After-click wait:** URL changes are polled briefly with explicit waits; if a new tab opened,
   the correct 0-based index is suggested and a `TABS` line is added while multiple tabs exist.
+- **Dump priority (form → primary action → overlay → card → rest):** the element budget is spent
+  on the controls whose absence is fatal, not on DOM order.
+  - Form fields (`input`, `textarea`, `select`) come first. Measured on n11.com: a content-dense
+    home page has **485 interactive elements**; card-first ordering filled all 40 slots with product
+    cards and the header **search box never appeared in the dump at all**.
+  - Primary action buttons (`Sepete Ekle` / `Add to cart` / `Buy now` / `Save` / `Submit`, plus
+    `add-to-cart` / `primary` class hints) come second. Measured on an n11 product page:
+    recommendation carousels consumed every slot and the page's own cart button
+    (`BUTTON.add-to-cart-btn`) was missing; after the fix it is `e2`.
+- **Settle after navigate:** `document.body` existing does not mean the SPA finished rendering, so
+  `navigate` polls the interactive-element count until **two consecutive samples agree** (ceiling
+  ~0.9 s). Measured on n11: without it the navigate dump omitted the search box while a snapshot
+  one second later included it — the model only ever sees the first dump.
+- **JS-driven submit escalation:** `submit: true` climbs a ladder and stops when the URL changes —
+  1) `Enter`, 2) closest form `requestSubmit()` or nearest submit-like control clicked via **JS**
+  (works on `<i>` icons and overlay-covered nodes where Selenium click refuses), 3) **URL scheme**:
+  try `/arama?q=`, `/search?q=`, `/?s=`, `/search?s=` and accept the first that both changes the URL
+  and yields a populated body (≥10 interactive elements, so a soft-404 page of chrome is rejected).
+  Measured on n11.com: no `<form>`, no button, no suggestion list, and both Selenium `send_keys(:enter)`
+  and a hand-dispatched native `KeyboardEvent` were swallowed; only `/arama?q=bluetooth+kulaklik`
+  produced results (42 product links).
 
 ### `browser_wait_for` types
 

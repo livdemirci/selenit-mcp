@@ -215,6 +215,33 @@ return (function (maxElements) {
   // gidiyordu (HBI 173 öğe → ilk 40 ALL menü; model ürünleri asla göremiyordu).
   // Ürün kartı içindeki öğeler (sepete ekle ikonu, fiyatlı kart linkleri)
   // menü linklerinden ÖNCE listelenir.
+  //
+  // KARŞI DENGE (n11.com ölçümü): ürün kartı önceliği bu kez ters yönde
+  // bozuluyordu — 485 etkileşimli öğeli ana sayfada ilk 40 slotu tamamen ürün
+  // kartları dolduruyor, header'daki ARAMA KUTUSU hiç sıra alamıyordu.
+  // Arama kutusu bir sitenin en kritik kontrolüdür; model onu göremezse görev
+  // ilk adımda ölür. Bu yüzden form alanları (input/textarea/select) her zaman
+  // ürün kartlarından ÖNCE gelir.
+  function giris_alani(el) {
+    var t = (el.tagName || '').toLowerCase();
+    return t === 'input' || t === 'textarea' || t === 'select';
+  }
+
+  // Birincil eylem düğmeleri: "Sepete Ekle", "Satın Al", "Kaydet", "Gönder".
+  // n11 ürün sayfası ölçümü: ürün öneri kartları MAX bütçesini doldurup asıl
+  // "Sepete Ekle" (BUTTON.add-to-cart-btn) dump'a hiç giremiyordu. Sayfanın
+  // ana eylemi, öneri kartlarından her zaman daha önemlidir.
+  function birincil_eylem(el) {
+    if ((el.tagName || '').toLowerCase() !== 'button') {
+      if (el.getAttribute && el.getAttribute('role') !== 'button') return false;
+    }
+    var t = (el.innerText || el.value || '').trim();
+    if (!t || t.length > 30) return false;
+    if (/sepete ekle|satın al|satin al|hemen al|kaydet|gönder|gonder|onayla|öde|ode|ekle/i.test(t)) return true;
+    var c = (el.getAttribute && el.getAttribute('class') || '').toLowerCase();
+    return /add-to-cart|addtocart|buy-now|buynow|checkout|primary/.test(c);
+  }
+
   function kart_icerik(el) {
     if (el.closest('[class*="productList" i],[data-asin]')) return true;
     var c = el.closest('li,article,div');
@@ -231,12 +258,21 @@ return (function (maxElements) {
     walk(document, false);
   }
 
-  // Sıralama + işaretleme: overlay → ürün kartı içerikleri → normal öğeler;
-  // ref'ler bu nihai sıraya göre atanır.
-  var secilen = toplanan.filter(function (p) { return overlay_index(p.el) !== -1; });
-  var gerisi = toplanan.filter(function (p) { return overlay_index(p.el) === -1; });
-  secilen = secilen.concat(gerisi.filter(function (p) { return kart_icerik(p.el); }),
-                           gerisi.filter(function (p) { return !kart_icerik(p.el); }));
+  // Sıralama + işaretleme (öncelik sırası):
+  //   1. form alanları  2. birincil eylem düğmeleri  3. overlay
+  //   4. ürün kartı içerikleri  5. normal öğeler
+  // (Arama kutusu/select olmadan görev başlayamaz; "Sepete Ekle" olmadan
+  //  satın alma tamamlanamaz. İkisi de öneri kartlarından önce gelir.)
+  var secilen = toplanan.filter(function (p) { return giris_alani(p.el); });
+  var kalan = toplanan.filter(function (p) { return !giris_alani(p.el); });
+  var birincil = kalan.filter(function (p) { return birincil_eylem(p.el); });
+  var digerleri = kalan.filter(function (p) { return !birincil_eylem(p.el); });
+  secilen = secilen.concat(
+    birincil,
+    digerleri.filter(function (p) { return overlay_index(p.el) !== -1; }),
+    digerleri.filter(function (p) { return overlay_index(p.el) === -1 && kart_icerik(p.el); }),
+    digerleri.filter(function (p) { return overlay_index(p.el) === -1 && !kart_icerik(p.el); })
+  );
 
   for (var n = 0; n < MAX && n < secilen.length; n++) {
     var ref = 'e' + (n + 1);
