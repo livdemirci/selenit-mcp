@@ -93,7 +93,12 @@ its own port.
 
 ### Safety nets
 
-- **Loop warning:** the same tool+arguments arriving a third time is not executed; a warning is returned.
+- **Loop warning:** the same tool+arguments arriving a third time is not executed; the response carries
+  the page title/URL plus a *directive* telling the model what to do instead (stop and answer, stop
+  scrolling, try another element) rather than the old generic "try browser_snapshot" — which, on a
+  `browser_snapshot` loop, told the model to repeat the very call that was looping. Measured on n11:
+  the old wording let Gemma repeat `browser_snapshot` 6× for 128 s and never answer; with the
+  directive it stopped and answered correctly in 3 steps.
 - **Actionable errors:** "refs are renewed every snapshot", "element is covered", "alert is open";
   a wrong tag on `browser_select` says `this element is not a <select> but a <button>`, and an
   invalid CSS selector returns an example-based hint.
@@ -137,6 +142,49 @@ its own port.
   Measured on n11.com: no `<form>`, no button, no suggestion list, and both Selenium `send_keys(:enter)`
   and a hand-dispatched native `KeyboardEvent` were swallowed; only `/arama?q=bluetooth+kulaklik`
   produced results (42 product links).
+- **Search affordances that are not `<input>`:** some sites open search as an overlay, so no visible
+  `<input>` exists until you click a text-less icon button. Measured on Trendyol: the control is
+  `button[data-testid="suggestion-placeholder"]` (aria-label "Open search"); clicking it injects the
+  real `<input>`. `birincil_eylem` therefore treats `data-testid` / `aria-label` / `class` matching
+  `search|suggestion-placeholder|search-icon` as primary **even with no text**, otherwise the button
+  is ranked behind product cards and never enters the dump. After the fix it is `e1`:
+  `e1 button Ürün, kategori veya marka ara`.
+- **`browser_dom` modal flag matches `snapshot.js`:** the DOM summary used to report
+  `modal: !!document.querySelector("[class*=modal i],[class*=dialog i],[role=dialog]")` — presence
+  only, no visibility or geometry. Measured on Trendyol: a hidden `modal`-classed node made
+  `modal: true` while the real candidate was a 474×40 px cookie link that does not cover the screen
+  centre, so the model was told a modal was open and chose the wrong strategy. Both code paths now
+  require: visible (rect > 0, not `display:none` / `visibility:hidden` / `opacity:0`), covers
+  `elementFromPoint(centre)`, and contains ≥1 visible interactive child.
+- **Overlay-gated inputs (`pointer-events: none`):** some sites render the search field with
+  `pointer-events: none` and put a plain `DIV` on top of it; clicking that DIV unhides the real
+  field. Measured on Hepsiburada: input rect 418×52, `display: inline-block`, `opacity: 1`, yet
+  `pointerEvents: none` and `elementFromPoint(centre)` returned `DIV.initialComponent-…`, so
+  Selenium `send_keys` raised `ElementNotInteractableError`. Fixed by `type_click_ac` (click the
+  covering node, then re-resolve the ref — the click rewrites the DOM, so the old element handle goes
+  stale) plus `js_yaz` (native prototype `value` setter + `input`/`change` events, required by
+  React/Vue-controlled fields). After the overlay opens, a real `Enter` works and is preferred over
+  URL guessing.
+- **`browser_read` prefers the main content over the page chrome:** `body.innerText` starts with the
+  header/nav, so the `max` character budget was consumed by menu links before any result appeared.
+  Measured on Hepsiburada: `browser_read` returned only "Siparişlerim / Kampanyalar / Hepsiburada
+  Premium…" — zero product names — while `[class*="productList"]` held an 8 509-character real
+  listing. `read` now tries `[class*=productList]`, `[class*=product-list]`, `[class*=searchResult]`,
+  `main`, `[role=main]`, `#content` first and uses the container text when it exceeds 200 chars.
+  After the fix the same call starts with `Pensan Büro Mavi Tükenmez Kalem…`.
+- **`browser_read` appends a DURUM (status) line:** result/item count plus remaining scroll distance,
+  so the model does not have to scroll to discover what it already has. Measured on n11: Gemma
+  scrolled 3× (third blocked by the loop guard) before reading the price that was already in the
+  `browser_type` output — the status line makes that information explicit.
+
+- **URL-scheme fallback must validate the destination, not just the URL:** `submit_via_url` accepted
+  any candidate that changed the URL and had ≥10 interactive elements. Measured on Hepsiburada:
+  `/arama?q=kilim` is a **404 page** with 21 category links, and `/?s=kilim` renders the **home page**
+  with 124 product links — both passed the old check. Now each candidate is rejected when
+  `hata_sayfasi?` matches (title or first 400 chars of body: `404`, `bulunamadı`, `sayfamız yok`,
+  `not found`) **and** unless `arama_terimi_sayfada?` finds a token of the query in the first 3 000
+  chars of body text. The working schemes found so far: `/arama?q=` (n11), `/sr?q=` (Trendyol),
+  `/ara?q=` (Hepsiburada — note the single **r**), `/search?q=` (GitHub), `wiki/` (Wikipedia).
 
 ### `browser_wait_for` types
 

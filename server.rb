@@ -284,16 +284,55 @@ def repeated_call?(name, args)
   $recent_calls.count(signature) >= 3 && !%w[browser_screenshot browser_status].include?(name)
 end
 
+# Döngü uyarısı: aynı çağrının 3. tekrarında modele NE YAPACAĞINI söyle ve
+# sayfa durumunu yine de ver ki körsüz kalmasın.
+def dongu_uyarisi(name)
+  baslik = begin
+    $browser&.driver&.title.to_s
+  rescue StandardError
+    ""
+  end
+  url = begin
+    $browser&.driver&.current_url.to_s
+  rescue StandardError
+    ""
+  end
+  öneri =
+    case name
+    when "browser_snapshot", "browser_dom", "browser_read"
+      "Sayfa zaten yukarıda listelendi. Aynı bilgiyi tekrar isteme: " \
+        "görevi TAMAMLA ve araç çağırmayı bırakarak cevabını yaz."
+    when "browser_scroll"
+      "Kaydırma sonuç vermiyor. Kaydırmayı BIRAK; yukarıdaki dökümde/metinde " \
+        "gereken bilgi zaten var. Görevi tamamla ve cevabı yaz."
+    when "browser_click"
+      "Bu tıklama zaten yapıldı. Farklı bir öğe seç ya da görevi tamamla."
+    when "browser_type"
+      "Bu alana zaten yazıldı. Alanın değerini kontrol et; submit gerekiyorsa " \
+        "browser_press_key(key: \\\"enter\\\") dene, yoksa görevi tamamla."
+    else
+      "Farklı bir araç dene ya da görevi tamamla."
+    end
+
+  "DÖNGÜ UYARISI: aynı çağrı 3. kez geldi (#{name}) ve ÇALIŞTIRILMADI.\n" \
+    "DURUM: #{baslik[0, 70]} | #{url[0, 80]}\n" \
+    "YAPILACAK: #{öneri}"
+end
+
 def call_tool(name, args)
   if repeated_call?(name, args)
-    return "DÖNGÜ UYARISI: aynı çağrı 3. kez geldi (#{name}). Durumu yeniden görmek için browser_snapshot kullan " \
-           "veya farklı bir adım dene; gerekirse kullanıcıya sor."
+    # Küçük modeller uyarı metnini okuyup yön değiştirmekte zorlanıyor.
+    # Hepsiburada/n11 ölçümü: 6-10 adım aynı çağrıyı tekrarladılar çünkü uyarı
+    # (a) sayfa içeriği döndürmüyordu (model körsüz kalıyordu) ve
+    # (b) browser_snapshot döngüsünde "snapshot kullan" diyerek aynı şeyi
+    #     öneriyordu. Artık uyarı yönlendirici ve durum bilgisi içeriyor.
+    return dongu_uyarisi(name)
   end
 
   started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
   result = Timeout.timeout(OP_TIMEOUT) { dispatch_tool(name, args) }
   Audit.log(
-    tool: name, args: args, ok: !result.to_s.match?(/\A(HATA|ENGELLENDİ|ONAY GEREKLİ)/),
+    tool: name, args: args, ok: !result.to_s.match?(/\A(HATA|ENGELLENİR|ENGELLENDİ|ONAY GEREKLİ)/),
     detail: result, seconds: (Process.clock_gettime(Process::CLOCK_MONOTONIC) - started).round(2)
   )
   result

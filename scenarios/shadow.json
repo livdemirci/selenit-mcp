@@ -1,9 +1,9 @@
 {
   "task": "shadow",
   "desc": "shadow DOM içindeki alana yaz",
-  "recorded_at": "2026-10-23T08:04:47+0300",
+  "recorded_at": "2026-10-26T00:04:48+0300",
   "model": "google/gemma-4-e4b",
-  "answer": "Mesaj kutusuna 'merhaba' yazıldı ve ardından 'Onayla' düğmesine basıldı. Sayfada herhangi bir yeni görsel değişiklik veya sonuç görünmemektedir.",
+  "answer": "Mesaj alanına 'merhaba' yazıldı ve ardından 'Onayla' düğmesine basıldı. İşlem tamamlandı.",
   "final_url": "http://127.0.0.1:8765/shadow",
   "assert_js": "var t=((document.getElementById('result')||{}).textContent||'').toLowerCase(); return String(t.indexOf('shadow sonuç')>=0 && t.indexOf('merhaba')>=0)",
   "assert_value": "true",

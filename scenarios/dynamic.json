@@ -1,7 +1,7 @@
 {
   "task": "dynamic",
   "desc": "dinamik içeriği bekle, kaydır, say",
-  "recorded_at": "2026-10-23T08:08:17+0300",
+  "recorded_at": "2026-10-26T00:13:25+0300",
   "model": "google/gemma-4-e4b",
   "answer": "Toplam 15 kayıt bulunmaktadır.",
   "final_url": "http://127.0.0.1:8765/dynamic",

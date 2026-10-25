@@ -231,14 +231,21 @@ return (function (maxElements) {
   // n11 ürün sayfası ölçümü: ürün öneri kartları MAX bütçesini doldurup asıl
   // "Sepete Ekle" (BUTTON.add-to-cart-btn) dump'a hiç giremiyordu. Sayfanın
   // ana eylemi, öneri kartlarından her zaman daha önemlidir.
+  // Trendyol ölçümü: arama kutusu <input> DEĞİL — metinsiz bir ikon düğmesi
+  // (button[data-testid=suggestion-placeholder]); tıklanınca arama overlay'i
+  // açılıyor. Bu yüzden arama-benzeri düğmeler de birincil sayılır.
   function birincil_eylem(el) {
     if ((el.tagName || '').toLowerCase() !== 'button') {
       if (el.getAttribute && el.getAttribute('role') !== 'button') return false;
     }
     var t = (el.innerText || el.value || '').trim();
+    var c = (el.getAttribute && el.getAttribute('class') || '').toLowerCase();
+    var tid = (el.getAttribute && el.getAttribute('data-testid') || '').toLowerCase();
+    var aria = (el.getAttribute && el.getAttribute('aria-label') || '').toLowerCase();
+    // Metinsiz arama düğmeleri: data-testid/aria-label/class arama sinyali taşır.
+    if (/search|suggestion-placeholder|search-icon|searchbtn/.test(tid + ' ' + aria + ' ' + c)) return true;
     if (!t || t.length > 30) return false;
     if (/sepete ekle|satın al|satin al|hemen al|kaydet|gönder|gonder|onayla|öde|ode|ekle/i.test(t)) return true;
-    var c = (el.getAttribute && el.getAttribute('class') || '').toLowerCase();
     return /add-to-cart|addtocart|buy-now|buynow|checkout|primary/.test(c);
   }
 

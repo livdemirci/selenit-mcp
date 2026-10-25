@@ -660,16 +660,67 @@ Regresyon: smoke **32/32**, replay bozulmadı.
 Ders: dump'ı **bayt boyutuyla** değil, **modelin ihtiyaç duyduğu öğenin orada olup
 olmadığıyla** değerlendirin. 4 KB'lık dump büyürken arama kutusu hâlâ eksik olabilir.
 
+### 9. tur: canlı site taraması (Trendyol + Hepsiburada) — üç yeni kusur
+
+Yedi canlı sitede (Wikipedia TR, Hacker News, n11, Trendyol, Hepsiburada, GitHub)
+dump üretildi; ikisi yeni kusur ortaya çıkardı:
+
+1. **`browser_dom` yanlış `modal: true`.** Özet yalnızca DOM'da `modal`/`dialog`
+   class'lı bir şey var mı diye bakıyordu; görünürlük/geometri kontrolü yoktu.
+   Trendyol'da gizli bir düğüm yüzünden model "MODAL AÇIK" sanıyordu (gerçek
+   aday: `cookie-setting-link`, 474×40 px, ekran merkezini kapsamıyor). Artık
+   `snapshot.js` ile aynı ölçüt: görünür + `elementFromPoint(merkez)` kapsıyor +
+   içinde en az bir görünür etkileşimli çocuk.
+
+2. **Arama `<input>` değil, metinsiz ikon düğmesi olabilir.** Trendyol'da arama
+   `button[data-testid="suggestion-placeholder"]`; tıklanınca overlay açılıp
+   gerçek `<input>` o an oluşuyor. `birincil_eylem` artık `data-testid` /
+   `aria-label` / `class` içinde `search|suggestion-placeholder|search-icon`
+   geçen **metinsiz düğmeleri** de birincil sayıyor. Düzeltme öncesi ürün
+   kartlarının arkasında kalıp dump'a hiç girmiyordu; sonrası `e1`:
+   `e1 button Ürün, kategori veya marka ara`.
+
+3. **`pointer-events: none` örtülü input (Hepsiburada).** Input görünür
+   (418×52, `display: inline-block`, `opacity: 1`) ama `pointerEvents: none` ve
+   merkezinde başka bir `DIV` var → Selenium `send_keys`
+   `ElementNotInteractableError` veriyordu; model aynı çağrıyı 12 kez tekrarladı
+   (172 sn, sonuç yok). Düzeltme: `type_click_ac` örtüyü tıklar, **ref yeniden
+   çözülür** (tıklama DOM'u yenilediği için eski element tutamağı bayatlar),
+   `js_yaz` prototype `value` setter'ı + `input`/`change` olaylarıyla yazar.
+   Örtü açıldıktan sonra gerçek `Enter` çalışıyor: `/ara?q=kalem` → 30 ürün,
+   4,4-6,3 sn.
+
+**URL şeması yedeği artık hedefi doğruluyor.** `submit_via_url` eskiden "URL
+değişti + ≥10 etkileşimli öğe" kontrolüyle yetiniyordu; Hepsiburada'da
+`/arama?q=kilim` **404** (21 kategori linki) ve `/?s=kilim` **anasayfa**
+(124 ürün linki) bu kontrolü geçiyordu. Artık her aday `hata_sayfasi?`
+(başlık/gövde: `404`, `bulunamadı`, `sayfamız yok`) ile reddedilir ve
+`arama_terimi_sayfada?` gövdenin ilk 3 000 karakterinde sorgu token'ı
+bulamazsa kabul edilmez. Doğrulanan şemalar: `/arama?q=` (n11), `/sr?q=`
+(Trendyol), `/ara?q=` (Hepsiburada — **tek r**), `/search?q=` (GitHub),
+`wiki/` (Wikipedia).
+
+Sonuç (Gemma 4 E4B, thinking kapalı): n11 53 sn / Trendyol 36 sn /
+Hepsiburada 64 sn / Wikipedia 37 sn / HN 20 sn — **5/5 geçti**.
+Smoke regresyon: **32/32**.
+
 ## Gemma E4B için ipuçları
 
 - Modelden **tek adım** isteyin: `browser_navigate` → `browser_snapshot` → `browser_click`.
 - Öğe seçerken `ref` kullanın (`e3`); CSS selector'ı yalnızca gerektiğinde verin.
 - Sayfa uzunsa `browser_find` veya `browser_read` kullanın; tüm HTML'i okutmayın.
 - `BROWSER_MCP_MAX_ELEMENTS` değerini 20–40 arasında tutun.
-- Kısa sistem istemi:
+- **"Bilgi bulunca dur" talimatı ZORUNLU.** Ölçüldü (n11, canlı): bu satır
+  olmadan model aradığı bilgiyi `browser_type` çıktısında gördüğü hâlde
+  `browser_snapshot`'ı 5-6 kez tekrarlayıp 128 sn harcadı ve **hiç cevap
+  vermedi**; satır eklendiğinde aynı görev 3 adımda doğru cevapla bitti.
+  Küçük modeller "ne zaman duracağım" sinyalini kendiliğinden üretmiyor.
+- Kısa sistem istemi (bu hâliyle doğrulandı):
 
 ```text
 Sen tarayıcı otomasyonu yapan bir ajansın. Her adımda tek araç çağır.
 Sayfayı anlamak için browser_snapshot kullan ve öğeleri e1, e2 gibi ref'lerle seç.
+Arama için arama kutusuna yaz ve submit: true ver; aynı çağrıyı tekrar etme.
+Bilgiyi bulduğunda araç çağırmayı BIRAK ve cevabı yaz.
 Uzun HTML veya tüm sayfa metnini isteme; kısa yanıt ver.
 ```

@@ -317,7 +317,38 @@ class SelenitBrowser
       baslik: (document.title || "").slice(0, 90),
       ready: document.readyState,
       girdi: document.querySelectorAll("input,textarea,select").length,
-      modal: !!document.querySelector("[class*='modal' i],[class*='dialog' i],[role=dialog]"),
+      // Modal tespiti snapshot.js ile AYNI ölçütü kullanmalı: element görünür
+      // olmalı VE ekran merkezini kapsamalı. Eski hâli yalnızca "DOM'da
+      // modal/dialog class'lı bir şey var mı" diye bakıyordu; Trendyol'da
+      // gizli bir modal class'lı element yüzünden modal:true dönüyor ve model
+      // "MODAL AÇIK" sanıp yanlış strateji kuruyordu (ölçüldü: gerçek aday
+      // cookie-setting-link, 474x40px, merkezi kapsamıyor).
+      modal: (function () {
+        var cands = document.querySelectorAll(
+          '[aria-modal="true"],[role="dialog"],dialog[open],' +
+          '[class*="modal" i],[class*="dialog" i],[class*="popup" i]');
+        var cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+        var hit = null;
+        try { hit = document.elementFromPoint(cx, cy); } catch (e) { hit = null; }
+        if (!hit) return false;
+        for (var i = 0; i < cands.length; i++) {
+          var c = cands[i];
+          var r = c.getBoundingClientRect();
+          if (r.width <= 0 || r.height <= 0) continue;
+          var s = window.getComputedStyle(c);
+          if (s.visibility === "hidden" || s.display === "none" || s.opacity === "0") continue;
+          if (c === hit || c.contains(hit)) {
+            var q2 = "a[href],button,input,textarea,select,[role=button],[role=link],[role=textbox]";
+            var ic = c.querySelectorAll(q2), gor = 0;
+            for (var j = 0; j < ic.length; j++) {
+              var ir = ic[j].getBoundingClientRect();
+              if (ir.width > 0 && ir.height > 0) gor++;
+            }
+            if (gor > 0) return true;
+          }
+        }
+        return false;
+      })(),
       alert: (function () {
         var a = document.querySelector("[role=alert],[role=status],.hb-toast-notifier-box,[class*='toast' i]");
         return (a && a.getBoundingClientRect().height > 0) ? (a.innerText || "").replace(/\\s+/g, " ").slice(0, 90) : null;
@@ -466,20 +497,55 @@ class SelenitBrowser
       end
     rescue Selenium::WebDriver::Error::StaleElementReferenceError
       # Otomatik tamamlama/arama kutusu DOM'u yenileyebilir; öğeyi yeniden
-      # çözüp yazmayı bir kez tekrarla. Seçici yoksa odaktaki metin alanını
-      # kullan (sayfa değişmediyse güvenli; gövde/link ise tekrar denemeyiz).
+      # çözüp yazmayı bir kez tekrarla.
+      # Hepsiburada ölçümü: örtü açılırken DOM yenileniyor ve Selenium
+      # "stale element reference" atıyor. Ama işlem çoğu zaman BAŞARILI
+      # oluyor (URL /ara?q=... değişmiş) — bu durumda hatayı yut, modele
+      # yanlış "HATA" gösterme.
+      if driver.current_url.to_s != url_before_type.to_s
+        return "yazıldı: #{ref || selector} <- #{text.to_s[0, 60].inspect}#{submit ? ' + Enter' : ''} " \
+               "(not: DOM yenilendi, işlem tamamlandı)\n#{snapshot_text}#{harvest_toasts}"
+      end
       raise if attempts >= 2
 
-      element = if selector.to_s.empty?
-                  active = driver.switch_to.active_element
-                  editable = %w[input textarea].include?(active.tag_name)
-                  raise unless editable
-
-                  active
-                else
-                  resolve(ref, selector, nil, wait: :visible)
-                end
+      attempts += 1
+      element = yeniden_coz(ref, selector)
       retry
+    rescue Selenium::WebDriver::Error::ElementNotInteractableError
+      # Hepsiburada ölçümü: arama input'u görünür (rect 418x52, display
+      # inline-block) ama pointerEvents:none; merkezinde overlay açan bir DIV
+      # var. O DIV'e tıklamak input'u tıklanabilir yapıyor — ama tıklama DOM'u
+      # yenilediği için ESKİ ELEMENT REFERANSI GEÇERSİZ oluyor (ölçüldü:
+      # tıklama sonrası e1 "seçici DOM'da bulunmadı"). Bu yüzden önce aç,
+      # sonra ref'i yeniden çöz.
+      raise if attempts >= 2
+
+      attempts += 1
+      if type_click_ac(element)
+        sleep 0.3
+        begin
+          element = selector.to_s.empty? ? resolve(ref, nil, nil, wait: :visible) : resolve(nil, selector, nil, wait: :visible)
+        rescue StandardError
+          nil
+        end
+      end
+      js_yaz(element, text)
+      @js_type_used = true
+      @son_yazma_notu = " (not: öğe tıklanamaz durumdaydı — pointer-events:none; JS ile yazıldı)"
+      # Örtü açıldıysa artık gerçek Enter gönderilebilir: Hepsiburada ölçümü
+      # (tıkla → yaz → Enter) /ara?q=kalem sonucunu veriyor. Bu yol URL
+      # şeması tahmininden daha güvenilir, önce onu dene.
+      unless submit
+        nil
+      else
+        begin
+          element.send_keys(:enter)
+          wait_until(timeout: 3) { driver.current_url != url_before_type }
+          @son_yazma_notu = " (not: örtü açılıp Enter gönderildi)"
+        rescue StandardError
+          nil
+        end
+      end
     end
     # Değerin gerçekten yazıldığını explicit bekle; arama/filtre gibi
     # input olaylarıyla DOM'u güncelleyen sayfalarda snapshot yarışını önler.
@@ -490,8 +556,16 @@ class SelenitBrowser
         nil
       end
     end
+    # JS ile yazıldıysa Enter hiç gönderilemedi: submit'i URL şemasıyla tamamla.
+    if submit && @js_type_used
+      @js_type_used = false
+      if driver.current_url == url_before_type
+        via = submit_via_url(element, text)
+        resume_after_js_action if via
+      end
+    end
     wait_after_action(previous_url: url_before_type)
-    "yazıldı: #{ref || selector} <- #{text.to_s[0, 60].inspect}#{submit ? ' + Enter' : ''}\n#{snapshot_text}#{harvest_toasts}"
+    "yazıldı: #{ref || selector} <- #{text.to_s[0, 60].inspect}#{submit ? ' + Enter' : ''}#{@son_yazma_notu}\n#{snapshot_text}#{harvest_toasts}"
   rescue Selenium::WebDriver::Error::UnexpectedAlertOpenError => e
     metin = e.message[/Alert text : (.+?)\}/, 1].to_s
     kabul = alert_hemen_kabul(driver)
@@ -551,7 +625,44 @@ class SelenitBrowser
     end
     body = driver.find_element(:tag_name, "body")
     text = body.text.to_s.gsub(/[ \t]+/, " ").gsub(/\n{3,}/, "\n\n").strip
-    "BAŞLIK: #{driver.title}\nURL: #{driver.current_url}\nMETİN:\n#{truncate(text, max.to_i)}"
+    # Ürün listesi en değerli içerik: model arama sonuçlarını arıyorsa onu ver.
+    # Hepsiburada ölçümü: [class*="productList"] 8.509 karakterlik gerçek ürün
+    # listesi; body.innerText ise header menüsüyle başlayıp max bütçesini
+    # tüketiyordu.
+    ana = begin
+      driver.execute_script(<<~JS)
+        var seciciler = ['[class*="productList" i]','[class*="product-list" i]',
+                         '[class*="searchResult" i]','[class*="search-result" i]',
+                         'main','[role=main]','#content'];
+        for (var i = 0; i < seciciler.length; i++) {
+          var e = document.querySelector(seciciler[i]);
+          if (e && e.innerText && e.innerText.trim().length > 200) return e.innerText;
+        }
+        return '';
+      JS
+    rescue StandardError
+      ""
+    end
+    ana = ana.to_s.gsub(/[ \t]+/, " ").gsub(/\n{3,}/, "\n\n").strip
+    # Ürün listesi varsa her zaman onu kullan (header gürültüsü yerine).
+    text = ana if ana.length > 200
+    # Modelin gereksiz kaydırma yapmasını azalt: sayfada kaç kayıt/ürün/bağlantı
+    # olduğunu ve kaydırmanın gerekli olup olmadığını tek satırda bildir.
+    ipucu = begin
+      m = dom_metrics
+      toplam_yuk = m && m[0].to_i
+      kalan = toplam_yuk.to_i - driver.execute_script("return Math.round(window.scrollY + window.innerHeight)").to_i
+      urun = driver.execute_script(
+        "return document.querySelectorAll('a[href*=\"/urun/\"],a[href*=\"-p-\"],li[class*=product i]').length"
+      ).to_i
+      parcalar = []
+      parcalar << "#{urun} ürün/kayıt öğesi" if urun.positive?
+      parcalar << (kalan <= 40 ? "sayfa sonu" : "aşağıda ~#{kalan}px daha var")
+      parcalar.empty? ? "" : "\nDURUM: #{parcalar.join(', ')}. Gerekli bilgi yukarıdaki metinde varsa kaydırma."
+    rescue StandardError
+      ""
+    end
+    "BAŞLIK: #{driver.title}\nURL: #{driver.current_url}#{ipucu}\nMETİN:\n#{truncate(text, max.to_i)}"
   rescue StandardError => e
     error("read", e)
   end
@@ -691,6 +802,66 @@ class SelenitBrowser
     error("press_key", e, key)
   end
 
+  # DOM yenilendikten sonra öğeyi yeniden çöz. Ref varsa ref önceliklidir;
+  # tekrar başarısız olursa odaktaki düzenlenebilir alana düşer.
+  def yeniden_coz(ref, selector)
+    if selector.to_s.empty?
+      begin
+        return resolve(ref, nil, nil, wait: :visible) unless ref.to_s.empty?
+      rescue StandardError
+        nil
+      end
+      active = driver.switch_to.active_element
+      return active if %w[input textarea].include?(active.tag_name.to_s)
+
+      raise Selenium::WebDriver::Error::StaleElementReferenceError, "öğe yeniden çözülemedi (#{ref})"
+    end
+    resolve(ref, selector, nil, wait: :visible)
+  end
+
+  # Pointer-events:none / katmanla örtülü input'a JS ile yaz.
+  # React/Vue kontrollü input'lar value setter'ı doğrudan atamayı görmez;
+  # prototype setter'ı üzerinden yazıp input+change olaylarını yayınlamak gerekir.
+  #
+  # Hepsiburada ölçümü: input önce pointer-events:none ve merkezinde bir DIV
+  # var (arama overlay'ini açan katman). O DIV'e tıklamak input'u
+  # pointer-events:auto yapıyor ve merkeze input geçiyor — yani "önce aç,
+  # sonra yaz". Bu yüzden yazmadan önce örtüyü açmayı dene.
+  def js_yaz(element, text)
+    type_click_ac(element)
+    driver.execute_script(<<~JS, element, text.to_s)
+      var el = arguments[0], metin = arguments[1];
+      el.focus();
+      var proto = el.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype
+                                            : window.HTMLInputElement.prototype;
+      var setter = Object.getOwnPropertyDescriptor(proto, 'value');
+      if (setter && setter.set) { setter.set.call(el, metin); } else { el.value = metin; }
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      return el.value;
+    JS
+  rescue StandardError
+    nil
+  end
+
+  # Örtülü input'u aç: merkezdeki katman elementi tıklanır, input tıklanabilir
+  # hâle gelir. Tıklama DOM'u yenileyebilir; çağıran taraf ref'i yeniden çözmeli.
+  def type_click_ac(element)
+    driver.execute_script(<<~JS, element)
+      var el = arguments[0];
+      var r = el.getBoundingClientRect();
+      if (r.width <= 0 || r.height <= 0) return false;
+      var m = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+      if (!m || m === el || el.contains(m)) return false;
+      var s = window.getComputedStyle(el);
+      if (s.pointerEvents !== 'none') return false;
+      try { m.click(); } catch (e) {}
+      return true;
+    JS
+  rescue StandardError
+    nil
+  end
+
   # SPA/asenkron render oturması: body hazır olsa da header, arama kutusu ve
   # nav JS ile sonradan gelir. n11.com ölçümü: navigate dump'ı arama kutusunu
   # KAÇIRIYOR, 1 sn sonraki snapshot görüyor. Sabit sleep yerine etkileşimli
@@ -753,7 +924,7 @@ class SelenitBrowser
   # Ama /arama?q=<terim> doğrudan çalışıyor (52 ürün, doğru başlık).
   # Genel kural: submit denendikten sonra URL değişmediyse, kök alan adına
   # yaygın arama yollarını dene ve gerçekten sonuç döneni kullan.
-  ARAMA_YOLLARI = ["/arama?q=%s", "/search?q=%s", "/?s=%s", "/search?s=%s"].freeze
+  ARAMA_YOLLARI = ["/arama?q=%s", "/ara?q=%s", "/search?q=%s", "/sr?q=%s", "/?q=%s", "/?s=%s", "/search?s=%s"].freeze
 
   def submit_via_url(element, text)
     kok = begin
@@ -772,18 +943,52 @@ class SelenitBrowser
         driver.navigate.to(aday)
         wait_ready
         settle_interactive
-        # Gerçekten sonuç sayfası mı: URL değişti ve gövde dolu mu?
-        sonuc = driver.execute_script(
-          "return document.querySelectorAll('a[href],button').length"
-        ).to_i
-        next if driver.current_url == onceki_url || sonuc < 10
-
+        next if driver.current_url == onceki_url
+        # Soft-404 / yanlış şema kontrolü: URL değişip sayfa dolu olsa bile
+        # 404 ya da anasayfaya düşmüş olabilir.
+        # Hepsiburada ölçümü: /arama?q=kalem 404 (21 kategori linki var),
+        # /?s=kalem ise anasayfaya düşüyor (124 ürün linki var!) — iki durumda
+        # da "URL değişti + sayfa dolu" kontrolü yanlış pozitif veriyordu.
+        # Gerçek ölçüt: hata sayfası DEĞİL ve arama terimi sayfada görünüyor.
+        next if hata_sayfasi?
+        next unless arama_terimi_sayfada?(text)
         return aday
       rescue StandardError
         next
       end
     end
     nil
+  end
+
+  # Arama terimi sayfada gerçekten görünüyor mu? URL'de olması yetmez:
+  # site anasayfaya yönlendirip URL'de terimi bırakabiliyor.
+  def arama_terimi_sayfada?(text)
+    parcalar = text.to_s.strip.split(/\s+/).reject { |p| p.length < 3 }
+    return true if parcalar.empty?
+
+    govde = driver.execute_script(
+      "return (document.body ? document.body.innerText : '').slice(0, 3000)"
+    ).to_s
+    return false if govde.empty?
+
+    normalize = ->(s) { s.to_s.downcase.tr("İI", "ii") }
+    govde_n = normalize.call(govde)
+    parcalar.any? { |p| govde_n.include?(normalize.call(p)) }
+  rescue StandardError
+    false
+  end
+
+  # 404 / "sayfa bulunamadı" / hata sayfası mı? Başlık + kısa gövde metnine bakar.
+  def hata_sayfasi?
+    baslik = driver.title.to_s
+    return true if baslik =~ /404|bulunamadı|bulunamadi|not found|hata|error/i
+
+    govde = driver.execute_script(
+      "return (document.body ? document.body.innerText : '').slice(0, 400)"
+    ).to_s
+    govde =~ /sayfamız\s*yok|sayfa bulunamadı|sayfa bulunamadi|böyle bir sayfa|404|not found/i ? true : false
+  rescue StandardError
+    false
   end
 
   # JS tetiklemeli gezinmeden sonra sayfanın oturmasını bekle (sabit sleep yok).
