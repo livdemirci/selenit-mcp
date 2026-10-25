@@ -7,3 +7,7 @@ tmp/
 .ipynb_checkpoints/
 *.tgz
 node_modules/
+
+# Yayın taslakları (Medium vb.) — repoya ait değil
+medium-draft*.md
+
