@@ -46,14 +46,14 @@ Aynı porta iki sunucu bağlanmaya çalışırsa Chrome kilitlenir; bu yüzden h
 
 | Araç | Açıklama |
 |---|---|
-| `browser_navigate` | Adrese git, kısa döküm döndür |
+| `browser_navigate` | Adrese git, kısa döküm döndür (bot doğrulama ekranını bekler) |
 | `browser_snapshot` | Etkileşimli öğeleri listele (`e1`, `e2`, ...) |
 | `browser_dom` | Kompakt DOM okuması: üst bilgi (URL/başlık/modal/uyarı ~400 kar) veya `q` ile öğe listesi — snapshot'tan hafif, "DOM hızlıysa kullan" için |
-| `browser_click` | `ref`, CSS `selector` veya görünen `text` ile tıkla |
+| `browser_click` | `ref`, CSS `selector` veya görünen `text` ile tıkla (`selector` + `text` tekrarlanan listede daraltır) |
 | `browser_find` | Metne göre öğe bul, tıklanabilir ref döndür (uzun sayfalar) |
 | `browser_read` | Görünür sayfa metnini oku (özet/çeviri) |
 | `browser_type` | Alana yaz (`submit: true` → Enter) |
-| `browser_select` | Açılır listeden seçenek seç |
+| `browser_select` | Açılır listeden seçenek seç (normal `<select>` veya özel combobox/menü) |
 | `browser_alert` | JS uyarısını oku/kapat (`text` okur+kapatır, `peek` açık bırakır) |
 | `browser_scroll` | Sayfayı kaydır (down/up/top/bottom) |
 | `browser_frame` | iframe içine gir / ana sayfaya dön |
@@ -71,7 +71,22 @@ Aynı porta iki sunucu bağlanmaya çalışırsa Chrome kilitlenir; bu yüzden h
 | `browser_close` | Oturumu kapat |
 
 Küçük modeller için güvenlik ağları:
-- **Döngü uyarısı:** aynı araç+argüman 3. kez gelirse çalıştırılmaz, uyarı döner.
+- **Döngü uyarısı:** aynı araç+argüman 3. kez gelirse ve **sonuç ile sayfa durumu** (URL + metin
+  karması) değişmemişse çalıştırılmaz, uyarı döner. Meşru tekrarlar ("+" düğmesine 4 kez basmak,
+  sayfa ilerletmek) engellenmez. Salt-okuma araçları (`snapshot`, `dom`, `read`, `find`, `wait_for`,
+  `status`, `screenshot`, `evaluate`) bu sayaca girmez; model sayfa durumunu tekrar tekrar yoklayabilir.
+- **Bot doğrulama ekranı:** `navigate` "Bir dakika lütfen / Just a moment / Checking your browser"
+  gibi bir ara ekrana düşerse içerik gelene kadar `BROWSER_MCP_CHALLENGE_WAIT` (varsayılan 20 sn)
+  bekler; geçmezse ne yapılacağını söyleyen bir hata döndürür.
+- **Gizli kopyalar:** bir CSS seçici birden çok öğe döndürürse ilk *görünür* olan kullanılır
+  (menülerde aynı bağlantının gizli kopyası tıklamayı kilitleyebiliyordu).
+- **Özel açılır menüler:** `browser_select`, `<select>` olmayan combobox'larda (`role=combobox`,
+  `b-select`, `dropdown`) menüyü açar, seçeneği metne göre bulup tıklar; bulamazsa görünen
+  seçenekleri listeler.
+- **SPA oturması:** gezinmeden sonra etkileşimli öğe sayısı iki ardışık ölçümde aynı olana kadar
+  beklenir (tavan ~0,9 sn); istemci tarafında render edilen sayfalar yarım okunmaz.
+- **Kontrollü input'lar:** `browser_type`, React/Vue alanı tuşları yutarsa native setter +
+  `input`/`change` olayına düşer; sayı alanları commit için blur edilir.
 - **Anlaşılır hatalar:** "ref her snapshot'ta yenilenir", "öğe kapalı", "uyarı açık" gibi ipuçları;
   select alanına yanlış etiket verilince `bu öğe bir <select> değil, <button>` der, geçersiz
   CSS seçicide örnekli ipucu döner.
@@ -82,6 +97,10 @@ Küçük modeller için güvenlik ağları:
 - **Satır bağlamı:** tablo satırındaki düğmeler `Düzenle | 10 · Ada Lovelace · Londra` gibi ayırt edici bağlamla gösterilir.
   2026-10: **ürün kartı bağlamı** da eklendi — kart içinde tekrar eden `Sepete Ekle` düğmeleri
   `Sepete Ekle | CEPFİT Boostar ... · 57,97 TL` biçiminde ayırt edilebilir (kart başlığı + fiyat).
+  Kart artık yalnızca sınıf adına bakmıyor: fiyat deseni (`1.234,56 TL`, `$19.99` ...) gösteren
+  ve en fazla 4 denetim içeren en yakın ata kart sayılır (siteye özgü sınıf adları gerekmez).
+- **Denetim önceliği:** sıralama/filtre denetimleri (`aria-haspopup`, `role=combobox`, metin/sınıfında
+  `sırala|sort|filtre|filter`) ürün kartlarından ÖNCE listelenir; 40 öğelik dökümde "Sırala" görünür kalır.
 - **Explicit wait:** tıklama/yazma/seçme/iframe/indirme işlemleri `Selenium::WebDriver::Wait` ile
   görünürlük, tıklanabilirlik, URL, metin veya dosya durumu bekler. Sabit `sleep` yoktur; implicit
   wait kapalıdır (`0`). Zaman aşımı, neyin beklendiğini söyleyen Türkçe bir hata döndürür.
@@ -205,6 +224,7 @@ OpenCode (`~/.config/opencode/opencode.json`):
 | `BROWSER_MCP_MAX_ELEMENTS` | `40` | Dökümde en fazla öğe (Gemma için 20–40) |
 | `BROWSER_MCP_HEADLESS` | `false` | Headless managed tarayıcı |
 | `BROWSER_MCP_WAIT` | `10` | Explicit wait varsayılan zaman aşımı (saniye) |
+| `BROWSER_MCP_CHALLENGE_WAIT` | `20` | Bot doğrulama ekranının kalkması için en fazla bekleme (saniye; `0` = bekleme) |
 | `BROWSER_MCP_LAZY_SCROLLS` | `8` | `browser_find` için lazy-load kaydırma denemesi |
 | `BROWSER_MCP_DOWNLOAD_DIR` | `artifacts/downloads-<port>` | Managed indirme klasörü |
 | `BROWSER_MCP_SCREENSHOT_DIR` | `./screenshots` | Ekran görüntüsü klasörü |
@@ -282,8 +302,8 @@ Ayar değişikliği LM Studio yeniden başlatılınca (veya yeni sohbet oturumun
 ruby benchmark.rb                 # tüm görevler
 ruby benchmark.rb deep select     # seçili görevler
 BENCH_MODEL=google/gemma-4-e4b BENCH_MAX_STEPS=10 ruby benchmark.rb
-# Düşünmeli şablonlu modellerde (Gemma 4 "Thinking Process") düşünme kapalı koşturmak:
-BENCH_THINKING=0 BENCH_MAX_TOKENS=1600 ruby benchmark.rb sepet
+# Düşünme varsayılan olarak KAPALI (Gemma 4 "Thinking Process"); açmak için BENCH_THINKING=1
+ruby benchmark.rb sepet
 ```
 
 Temel görevler: `link, form, wiki, hn, deep, read, select, alert, stale`
@@ -361,8 +381,9 @@ sekme geçişi, araç çağrısı işlemlerine üst sınır (`BROWSER_MCP_OP_TIM
   Not: Selenium gem'inin `BiDi::Network#on` sarmalayıcısı bozuk (geçersiz imza) — doğrudan
   `session.subscribe([events])` + `add_callback` kullanılır.
 Doğrulama: `smoke_test.rb` 23/23 ve 18/18 replay (17 hız senaryosu + gerçek site `sepet`).
-Benchmark'ta düşünmeli şablonlu modeller için `BENCH_THINKING=0` — Gemma E4B'de
-adım başı maliyet ~2,3× düştü (13 adımda sepet görevi 1/1 geçti).
+Benchmark'ta düşünmeli şablonlu modellerde düşünme **varsayılan olarak kapalıdır**
+(`BENCH_THINKING=0`; açmak için `1`) — Gemma E4B'de adım başı maliyet ~2,3× düştü
+(13 adımda sepet görevi 1/1 geçti).
 
 Ortam değişkenleri (alert/attach kurtarma, 5. tur):
 - `BROWSER_MCP_ATTACH_TIMEOUT` (varsayılan 13): attach üst sınırı; askıda
@@ -511,6 +532,42 @@ Koşum 5 "0 adım/0 sn" bıraktı — iki ayrı ders:
 
 Doğrulama: smoke **32/32**, replay 18/18 (57,9 sn).
 
+### 8. tur: Boyner — doğrulama ekranı + özel beden menüsü (gerçek site + yerel Gemma testi)
+
+Gerçek Boyner akışı (erkek ayakkabı → fiyat artan → en ucuz ayakkabı → beden →
+sepete 4 adet) sırasında çıkan ve **siteye özgü olmayan** düzeltmeler:
+
+- **Doğrulama ekranı:** kategori URL'sine doğrudan gidince Cloudflare
+  "Bir dakika lütfen..." ekranı geliyor; sayfa `complete` görünse de içerik yok.
+  `navigate` artık bu ekranı tanıyıp `BROWSER_MCP_CHALLENGE_WAIT` (20 sn) bekliyor;
+  geçmezse "yenile / beklenen metni bekle / BROWSER_MODE=existing" diyen hata döndürüyor.
+  Aynı oturumda site içi tıklamalarla ilerlemek doğrulamaya hiç düşmedi.
+- **Özel beden menüsü:** beden seçici `<select>` değil, `div[role=combobox]`
+  (b-select). `browser_select` artık `<select>` olmayan menüleri açıp seçeneği
+  metne göre tıklıyor; bulamazsa görünen seçenekleri listeliyor.
+- **Gizli kopya:** aynı `href`'e 5 bağlantı vardı (2'si görünür); seçici
+  eşleşmeleri arasından **görünür** olan seçiliyor.
+- **SPA geç render:** ürün sayfası ilk snapshot'ta yalnızca 2 öğe gösteriyordu;
+  `wait_dom_settle` (400 ms sabit, en fazla 3 sn) eklendi.
+- **Kontrollü input:** sepet adedi React alanında `send_keys` commit edilmedi;
+  sayı alanları blur ediliyor, gerekirse native setter + `input/change` olayı.
+- **Gözlem döngüsü:** `evaluate`/`snapshot` ile durum yoklamak döngü uyarısına
+  takılıyordu; salt-okuma araçları sayaçtan çıkarıldı.
+- **Yanlış döngü uyarısı:** "+" düğmesine 4 kez basmak "aynı çağrı" sayılıp
+  engelleniyordu. Artık sonuç **ve** sayfa durumu (URL + metin karması) değişmiyorsa
+  uyarı verilir; meşru tekrarlar geçer.
+- **Ürün kartı bağlamı:** kart sınıfı tanınmayan sitelerde (Boyner `verticalProduct`,
+  yerel mağaza `.kart`) düğmeler ayırt edilemiyordu. Kart artık fiyat deseni
+  (`149,99 TL`) gösteren en yakın atadan bulunuyor ve dökümde
+  `Sepete Ekle | Aqua Plaj Ayakkabısı · 331,55 TL` görünüyor.
+- **Denetim önceliği:** 20 bin ürünlü kategoride "Önerilen Sıralama" ilk 40 öğeye
+  girmiyordu; sıralama/filtre denetimleri artık kartlardan önce listeleniyor.
+
+Gemma E4B ile doğrulama: `benchmark.rb magaza` (yerel `/magaza`, düşünme **varsayılan
+kapalı**) **7 adımda GEÇTİ** — sıralama menüsü → en ucuz ayakkabı → sepette 4 adet
+(1.326,20 TL). Smoke **38/38** (M1 özel menü, N1 gizli kopya, O1 doğrulama ekranı,
+P1-P3 döngü koruması yeni testler), gerçek Boyner sepetinde **4 ürün / 1.326,20 TL**.
+
 ## Keşif → dondurma → tekrar (selenit sinerjisi)
 
 LLM her koşuda para/zaman harcamasın diye başarılı keşif **deterministik** hale getirilir:
@@ -628,7 +685,7 @@ açık tarayıcısına dokunmaz. Model yavaşsa ilk çağrı 20–40 sn sürebil
 Özet: **genel amaçlı bulut modeli + zengin artefakt** senaryosunda Playwright MCP daha güçlü;
 **yerel küçük model + mevcut oturum + denetim + deterministik regresyon** senaryosunda bu sunucu daha uygun.
 
-### 8. tur: n11.com — dump önceliği ve JS submit (canlı e-ticaret ölçümü)
+### 9. tur: n11.com — dump önceliği ve JS submit (canlı e-ticaret ölçümü)
 
 Gerçek bir e-ticaret sitesinde (n11.com) uçtan uca senaryo koşuldu; dört ayrı kusur
 çıktı ve hepsi **siteye özgü değil, genel**:
@@ -660,7 +717,7 @@ Regresyon: smoke **32/32**, replay bozulmadı.
 Ders: dump'ı **bayt boyutuyla** değil, **modelin ihtiyaç duyduğu öğenin orada olup
 olmadığıyla** değerlendirin. 4 KB'lık dump büyürken arama kutusu hâlâ eksik olabilir.
 
-### 9. tur: canlı site taraması (Trendyol + Hepsiburada) — üç yeni kusur
+### 10. tur: canlı site taraması (Trendyol + Hepsiburada) — üç yeni kusur
 
 Yedi canlı sitede (Wikipedia TR, Hacker News, n11, Trendyol, Hepsiburada, GitHub)
 dump üretildi; ikisi yeni kusur ortaya çıkardı:

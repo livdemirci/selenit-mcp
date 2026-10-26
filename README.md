@@ -25,8 +25,9 @@ navigate, fill forms, and complete multi-step tasks without drowning in context.
 | Auto-recovery from JS alerts, stale elements, covered elements | The run continues instead of collapsing mid-task |
 
 **Measured on Gemma E4B** (`google/gemma-4-e4b`, 20 tools, max_tokens 800): **17/17 tasks passed**,
-1–7 steps and 22–78 s per task, ~13 min total. With thinking disabled (`BENCH_THINKING=0`) the
-per-step cost dropped ~2.3×, and the real-site Trendyol cart task passed in 13 steps (~439 s);
+1–7 steps and 22–78 s per task, ~13 min total. Thinking is off by default
+(`BENCH_THINKING=0`; set `1` to enable): the per-step cost dropped ~2.3×, and the real-site
+Trendyol cart task passed in 13 steps (~439 s);
 that discovery replays deterministically in ~30 s with no model at all.
 
 ## How it works
@@ -67,14 +68,14 @@ its own port.
 
 | Tool | Description |
 |---|---|
-| `browser_navigate` | Go to a URL, return a compact dump |
+| `browser_navigate` | Go to a URL, return a compact dump (waits out bot-check interstitials) |
 | `browser_snapshot` | List interactive elements (`e1`, `e2`, …) |
 | `browser_dom` | Compact DOM read: header (URL/title/modal/alert ~400 chars) or element list via `q` — lighter than snapshot |
-| `browser_click` | Click by `ref`, CSS `selector`, or visible `text` |
+| `browser_click` | Click by `ref`, CSS `selector`, or visible `text` (`selector` + `text` narrows a repeated list) |
 | `browser_find` | Find an element by text, return a clickable ref (long pages) |
 | `browser_read` | Read visible page text (summary/translation) |
 | `browser_type` | Type into a field (`submit: true` → Enter) |
-| `browser_select` | Choose an option from a dropdown |
+| `browser_select` | Choose an option from a dropdown (native `<select>` or custom combobox/menu) |
 | `browser_alert` | Read/dismiss a JS alert (`text` reads+closes, `peek` leaves it open) |
 | `browser_scroll` | Scroll the page (down/up/top/bottom) |
 | `browser_frame` | Enter an iframe / return to the main frame |
@@ -93,12 +94,20 @@ its own port.
 
 ### Safety nets
 
-- **Loop warning:** the same tool+arguments arriving a third time is not executed; the response carries
-  the page title/URL plus a *directive* telling the model what to do instead (stop and answer, stop
-  scrolling, try another element) rather than the old generic "try browser_snapshot" — which, on a
-  `browser_snapshot` loop, told the model to repeat the very call that was looping. Measured on n11:
-  the old wording let Gemma repeat `browser_snapshot` 6× for 128 s and never answer; with the
-  directive it stopped and answered correctly in 3 steps.
+- **Loop warning:** the same tool+arguments arriving a third time is not executed **when the result
+  and page state (URL + text hash) are unchanged**; legitimate repetition (`+` four times, paging)
+  is allowed, and read-only tools (`snapshot`, `dom`, `read`, `find`, `wait_for`, `status`,
+  `screenshot`, `evaluate`) are exempt. The response carries the page title/URL plus a *directive*
+  telling the model what to do instead (stop and answer, stop scrolling, try another element) rather
+  than the old generic "try browser_snapshot" — which, on a `browser_snapshot` loop, told the model
+  to repeat the very call that was looping. Measured on n11: the old wording let Gemma repeat
+  `browser_snapshot` 6× for 128 s and never answer; with the directive it stopped and answered
+  correctly in 3 steps.
+- **Bot-check interstitials:** if `navigate` lands on a "Just a moment / Bir dakika lütfen /
+  Checking your browser" screen, it waits up to `BROWSER_MCP_CHALLENGE_WAIT` (default 20 s) for the
+  content to appear and only then returns the dump; otherwise it explains what to do.
+- **Hidden duplicates:** when a CSS selector matches several nodes, the first *visible* one is used
+  (menus often contain hidden copies of the same link).
 - **Actionable errors:** "refs are renewed every snapshot", "element is covered", "alert is open";
   a wrong tag on `browser_select` says `this element is not a <select> but a <button>`, and an
   invalid CSS selector returns an example-based hint.
@@ -111,7 +120,17 @@ its own port.
 - **Overlay priority:** content of `position:fixed` + high-z-index layers (cookie bars, notices)
   is listed first so the model can dismiss it.
 - **Row/card context:** buttons inside table rows are shown as `Edit | 10 · Ada Lovelace · London`;
-  repeated `Add to cart` buttons as `Add to cart | CEPFİT Boostar … · 57.97 TL`.
+  repeated `Add to cart` buttons as `Add to cart | CEPFİT Boostar … · 57.97 TL`. Card detection
+  does not rely on class names alone: the nearest ancestor that shows a price-like string
+  (`1.234,56 TL`, `$19.99`, …) and has at most 4 controls is used.
+- **Control priority:** sort/filter controls (`aria-haspopup`, `role=combobox`, text/class
+  containing `sort|filtre|filter`) are listed before product cards, so a 40-item dump still
+  contains "Sort by".
+- **Custom dropdowns:** `browser_select` also handles comboboxes that are not `<select>`
+  (`role=combobox`, `b-select`, `dropdown`): it opens the widget, matches the option text and
+  clicks it; on a miss it lists the visible options.
+- **Controlled inputs:** `browser_type` falls back to the native value setter + `input`/`change`
+  events when a React/Vue field swallows keystrokes; number fields are blurred to commit.
 - **Explicit waits:** click/type/select/iframe/download use `Selenium::WebDriver::Wait` (visibility,
   clickability, URL, text, file state). No fixed `sleep`; implicit wait is `0`. Timeouts return a
   message stating what was expected.
@@ -121,11 +140,14 @@ its own port.
   `downloads-manager` shadow root, waits for `IN_PROGRESS` to finish, and returns the file path.
 - **After-click wait:** URL changes are polled briefly with explicit waits; if a new tab opened,
   the correct 0-based index is suggested and a `TABS` line is added while multiple tabs exist.
-- **Dump priority (form → primary action → overlay → card → rest):** the element budget is spent
+- **Dump priority (form → sort/filter → primary action → overlay → card → rest):** the element budget is spent
   on the controls whose absence is fatal, not on DOM order.
   - Form fields (`input`, `textarea`, `select`) come first. Measured on n11.com: a content-dense
     home page has **485 interactive elements**; card-first ordering filled all 40 slots with product
     cards and the header **search box never appeared in the dump at all**.
+  - Sort/filter controls (`aria-haspopup`, `role=combobox`, text/class containing `sort|filtre|filter`)
+    come next. Measured on Boyner: the 20k-product category page pushed "Önerilen Sıralama" past the
+    40-item budget, so the model could never sort.
   - Primary action buttons (`Sepete Ekle` / `Add to cart` / `Buy now` / `Save` / `Submit`, plus
     `add-to-cart` / `primary` class hints) come second. Measured on an n11 product page:
     recommendation carousels consumed every slot and the page's own cart button
@@ -303,6 +325,7 @@ and `cwd` are required because a GUI-launched LM Studio may not have rbenv shims
 | `BROWSER_MCP_MAX_ELEMENTS` | `40` | Max elements per dump (20–40 for Gemma) |
 | `BROWSER_MCP_HEADLESS` | `false` | Headless managed browser |
 | `BROWSER_MCP_WAIT` | `10` | Default explicit wait timeout (s) |
+| `BROWSER_MCP_CHALLENGE_WAIT` | `20` | Max wait for a bot-check interstitial to clear (s; `0` disables) |
 | `BROWSER_MCP_LAZY_SCROLLS` | `8` | Lazy-load scroll attempts for `browser_find` |
 | `BROWSER_MCP_DOWNLOAD_DIR` | `artifacts/downloads-<port>` | Managed download directory |
 | `BROWSER_MCP_SCREENSHOT_DIR` | `./screenshots` | Screenshot directory |

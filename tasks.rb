@@ -260,5 +260,43 @@ TASKS = {
       url = mcp.call("browser_evaluate", { "script" => "return location.href" })
       url.to_s.include?("sepet") && answer.to_s =~ /\d+[\.,]\d{2}\s*TL/
     end
+  },
+  "boyner" => {
+    desc: "Boyner: erkek ayakkabı → fiyat artan → en ucuz ayakkabı → beden → sepete 4 adet",
+    prompt: "Gerçek Boyner sitesinde alışveriş akışını sırayla yap, her adımın sonucunu bekle:\n" \
+            "1) https://www.boyner.com.tr/ adresine git.\n" \
+            "2) Üst menüdeki 'ERKEK' bağlantısına tıkla.\n" \
+            "3) 'Erkek Ayakkabı' bağlantısına tıkla (adrese doğrudan gitme; tıklayarak ilerle).\n" \
+            "4) 'Önerilen Sıralama' düğmesine tıkla; açılan menüden 'Fiyat - Düşükten Yükseğe' seçeneğine tıkla.\n" \
+            "   URL'de sirala=fiyatArtan görünmeli.\n" \
+            "5) Listede adında 'Ayakkabı' geçen İLK ürünü seç (bakım/cila/sünger/bağcık/terlik ürünlerini atla).\n" \
+            "   Gerekirse sayfayı kaydır; ürün kartındaki bağlantı metnini kullan. Adını ve fiyatını not et.\n" \
+            "6) Ürün sayfasında 'Beden' açılır menüsünü browser_select (selector: .b-select) ile aç ve\n" \
+            "   stokta olan bir beden seç (ör. 45).\n" \
+            "7) 'SEPETE EKLE' düğmesine bas; ardından 'SEPETE GİT' ile sepete gel.\n" \
+            "8) Sepette adet alanını 4 yap (artı düğmesi ya da adet inputu) ve '4 ürün' yazdığını doğrula.\n" \
+            "Cevapta şu formatta ver: ürün | beden | birim fiyat | sepet adedi | sepet tutarı.",
+    check: lambda do |mcp, answer|
+      url = mcp.call("browser_evaluate", { "script" => "return location.href" })
+      metin = mcp.call("browser_evaluate", { "script" => "return document.body.innerText" })
+      url.to_s.include?("/sepet") && metin.to_s.match?(/\b4\s*ürün/i) &&
+        answer.to_s =~ /\d+[\.,]\d{2}\s*TL/
+    end
+  },
+  "magaza" => {
+    desc: "Mağaza (yerel): sıralama menüsü → en ucuz ayakkabı → sepete 4 adet",
+    prompt: "Şu sayfaya git: #{APP}/magaza .\n" \
+            "1) 'Önerilen Sıralama' düğmesine tıkla, açılan menüden 'Fiyat - Düşükten Yükseğe' seçeneğini seç.\n" \
+            "2) Listede en ucuz AYAKKABI ürününü seç (bakım süngeri gibi ürünleri atla) ve 'Sepete Ekle' düğmesine bas.\n" \
+            "3) Sepette adet 4 olana kadar devam et (artı düğmesi, adet alanı veya 'Sepete Ekle').\n" \
+            "4) Cevap vermeden önce snapshot al ve sepette '4 ürün' yazdığını doğrula.\n" \
+            "Son durumu kısaca söyle: ürün, adet ve toplam tutar.",
+    check: lambda do |mcp, _answer|
+      state = mcp.call("browser_evaluate", {
+        "script" => "return document.getElementById('sepet-adet').textContent + '|' + document.getElementById('sepet-detay').textContent"
+      }).to_s
+      parcalar = state.split("|", 2)
+      parcalar[0].to_s.strip == "4" && parcalar[1].to_s.include?("Ayakkabı") && parcalar[1].to_s.include?("x 4")
+    end
   }
 }.freeze

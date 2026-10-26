@@ -24,6 +24,12 @@ return (function (maxElements) {
           'svg[class*="spinnerIcon" i],svg[class*="addToCart" i],' +
           'div[class*="option" i],li[class*="option" i],' +
           'div[class*="menu-item" i],li[class*="menu-item" i],' +
+          // Özel açılır menüler (combobox/dropdown) çoğu sitede role taşır:
+          // sıralama, beden/varyant seçimi gibi tetikleyiciler görünür olsun.
+          '[aria-haspopup],[aria-expanded],[role=combobox],[role=menu],' +
+          '[role=listbox] li,[role=listbox] [role=option],' +
+          // Tasarım sistemi seçenekleri (b-select-option, select-option ...).
+          '[class*="select-option" i],[class*="select__option" i],' +
           '[onclick],[contenteditable="true"]';
 
   function visible(el) {
@@ -55,6 +61,9 @@ return (function (maxElements) {
     ziyaret.push(el);
     return false;
   }
+
+  // Fiyat deseni: ürün kartı bağlamını sınıf adına bağlı kalmadan bulmak için.
+  var FIYAT_RE = /(\d{1,3}(?:[.\s]\d{3})*|\d+)[.,]\d{2}\s*(TL|₺|\$|€|USD|EUR)/i;
 
   function describe(el) {
     var name = (el.getAttribute('aria-label') ||
@@ -91,6 +100,25 @@ return (function (maxElements) {
     var kart = el.closest
       ? el.closest('[data-testid*="card"],.product-card,[class*="product-card"],[class*="p-card"],[class*="productCard"]')
       : null;
+    // Sınıf adı ürün kartı sinyali vermiyorsa fiyat deseninden bul: fiyat
+    // gösteren EN YAKIN ata (her e-ticaret kartında fiyat vardır). Böylece
+    // "kart", "verticalProduct", "productListContent" gibi siteye özgü
+    // sınıf adlarına bağımlı kalmadan tekrar eden düğmeler ayırt edilir.
+    if (!kart) {
+      var aday = el.parentElement;
+      var derinlik = 0;
+      while (aday && derinlik < 6 && aday !== document.body) {
+        var adayMetin = (aday.innerText || '');
+        var adayKontroller = aday.querySelectorAll('a,button,input,select,textarea').length;
+        if (adayMetin.length > 0 && adayMetin.length <= 420 &&
+            adayKontroller <= 4 && FIYAT_RE.test(adayMetin)) {
+          kart = aday;
+          break;
+        }
+        aday = aday.parentElement;
+        derinlik++;
+      }
+    }
     if (kart && kart !== el && kart !== row) {
       var satirlar = (kart.innerText || '').split('\n').map(function (s) {
         return s.replace(/\s+/g, ' ').trim();
@@ -98,7 +126,7 @@ return (function (maxElements) {
       var fiyat = '';
       for (var f = 0; f < satirlar.length; f++) {
         // "57,97 TL" gibi kısa fiyat satırları; üstü çizili ve Plus fiyatını geç.
-        if (/TL$/.test(satirlar[f]) && satirlar[f].length <= 16) { fiyat = satirlar[f]; break; }
+        if (FIYAT_RE.test(satirlar[f]) && satirlar[f].length <= 24) { fiyat = satirlar[f]; break; }
       }
       var baslik = '';
       for (var b = 0; b < satirlar.length; b++) {
@@ -249,6 +277,18 @@ return (function (maxElements) {
     return /add-to-cart|addtocart|buy-now|buynow|checkout|primary/.test(c);
   }
 
+  // Sıralama/filtre kontrolleri: büyük listelerde MAX bütçesi ürün kartlarına
+  // gidince "Önerilen Sıralama" gibi düğmeler dökümde hiç görünmüyordu.
+  // Combobox/dropdown ve metninde sırala/filtre geçen denetimler öne alınır.
+  function kontrol_oncelik(el) {
+    var ad = ((el.getAttribute('aria-label') || '') + ' ' +
+              (typeof el.className === 'string' ? el.className : '') + ' ' +
+              (el.innerText || '')).toLowerCase();
+    if (/s[ıi]rala|sort|filtre|filter/.test(ad)) return true;
+    var rol = el.getAttribute('role') || '';
+    return !!(el.getAttribute('aria-haspopup') || rol === 'combobox');
+  }
+
   function kart_icerik(el) {
     if (el.closest('[class*="productList" i],[data-asin]')) return true;
     var c = el.closest('li,article,div');
@@ -266,15 +306,19 @@ return (function (maxElements) {
   }
 
   // Sıralama + işaretleme (öncelik sırası):
-  //   1. form alanları  2. birincil eylem düğmeleri  3. overlay
-  //   4. ürün kartı içerikleri  5. normal öğeler
+  //   1. form alanları  2. sıralama/filtre denetimleri  3. birincil eylemler
+  //   4. overlay  5. ürün kartı içerikleri  6. normal öğeler
   // (Arama kutusu/select olmadan görev başlayamaz; "Sepete Ekle" olmadan
-  //  satın alma tamamlanamaz. İkisi de öneri kartlarından önce gelir.)
+  //  satın alma tamamlanamaz; sıralama/filtre olmadan liste yönetilemez.
+  //  Üçü de öneri kartlarından önce gelir.)
   var secilen = toplanan.filter(function (p) { return giris_alani(p.el); });
   var kalan = toplanan.filter(function (p) { return !giris_alani(p.el); });
-  var birincil = kalan.filter(function (p) { return birincil_eylem(p.el); });
-  var digerleri = kalan.filter(function (p) { return !birincil_eylem(p.el); });
+  var kontroller = kalan.filter(function (p) { return kontrol_oncelik(p.el); });
+  var kalan2 = kalan.filter(function (p) { return !kontrol_oncelik(p.el); });
+  var birincil = kalan2.filter(function (p) { return birincil_eylem(p.el); });
+  var digerleri = kalan2.filter(function (p) { return !birincil_eylem(p.el); });
   secilen = secilen.concat(
+    kontroller,
     birincil,
     digerleri.filter(function (p) { return overlay_index(p.el) !== -1; }),
     digerleri.filter(function (p) { return overlay_index(p.el) === -1 && kart_icerik(p.el); }),

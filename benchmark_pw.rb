@@ -42,7 +42,7 @@ class Llm
       messages: messages,
       temperature: 0,
       max_tokens: (ENV["BENCH_MAX_TOKENS"] || 1600).to_i,
-      **(ENV["BENCH_THINKING"] == "0" ? { chat_template_kwargs: { enable_thinking: false } } : {}),
+      **(ENV.fetch("BENCH_THINKING", "0") == "0" ? { chat_template_kwargs: { enable_thinking: false } } : {}),
       tools: tools.map do |t|
         { type: "function", function: { name: t["name"], description: t["description"],
                                         parameters: t["inputSchema"] } }

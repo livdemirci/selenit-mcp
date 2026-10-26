@@ -218,6 +218,63 @@ c.call("browser_navigate", { url: ortulu_page })
 l = c.call("browser_click", { selector: "#sepetbtn" })
 check("L1 örtülü öğe JS tıklamasıyla vurulur", l.include?("JS tıklaması") && l.include?("toast başarı") || l.include?("sepete eklendi"), l.lines.take(3).join(" | "))
 
+# --- M) <select> olmayan özel açılır menü: browser_select açıp seçmeli ----
+# Boyner beden seçici (b-select/role=combobox) gibi bileşenler <select>
+# değildir; select aracı menüyü açıp metne göre seçebilmeli.
+custom_page = page(<<~HTML, bg_links: 1)
+  <div class="b-select" id="beden">
+    <div role="combobox" aria-haspopup="listbox" aria-expanded="false"
+         onclick="var m=document.getElementById('beden-menu');m.style.display='block';this.setAttribute('aria-expanded','true')">Seç</div>
+    <ul id="beden-menu" style="display:none">
+      <li class="select-option" onclick="document.getElementById('sec').textContent=this.textContent">40</li>
+      <li class="select-option" onclick="document.getElementById('sec').textContent=this.textContent">42</li>
+    </ul>
+  </div>
+  <span id="sec"></span>
+HTML
+c.call("browser_navigate", { url: custom_page })
+m = c.call("browser_select", { "selector" => "#beden", "label" => "42" })
+msec = c.call("browser_evaluate", { "script" => "return document.getElementById('sec').textContent" })
+check("M1 özel açılır menüden seçim", m.include?("özel menü") && msec.to_s.strip == "42", "#{m.lines.first&.slice(0, 80)} / #{msec}")
+
+# --- N) gizli kopya: seçicinin ilk eşleşmesi gizliyse görünür olan tıklanır
+dup_page = page(<<~HTML, bg_links: 1)
+  <a class="hedef" href="#gizli" style="display:none">Hedef</a>
+  <a class="hedef" href="#gorunur"
+     onclick="document.getElementById('res').textContent='gorunur tiklandi';return false">Hedef</a>
+  <span id="res"></span>
+HTML
+c.call("browser_navigate", { url: dup_page })
+n = c.call("browser_click", { "selector" => "a.hedef" })
+nres = c.call("browser_evaluate", { "script" => "return document.getElementById('res').textContent" })
+check("N1 gizli kopya atlanıp görünür öğe tıklanır", nres.to_s.include?("gorunur tiklandi"), "#{n.lines.first&.slice(0, 80)} / #{nres}")
+
+# --- O) bot doğrulama ekranı: navigate kalkmasını bekleyip içeriği döndürür
+challenge_page = durl(<<~HTML)
+  <html><head><meta charset='utf-8'><title>Bir dakika lütfen...</title></head>
+  <body>Güvenlik doğrulaması yapılıyor
+  <script>setTimeout(function(){document.title='Gerçek Sayfa';document.body.innerHTML='<button id="ok">Hazır</button>';},600)</script>
+  </body></html>
+HTML
+o = c.call("browser_navigate", { url: challenge_page })
+check("O1 doğrulama ekranı beklenip geçildi", o.include?("Hazır") && !o.include?("HATA (navigate)"), o.lines.take(3).join(" | "))
+
+# --- P) döngü koruması: sayfa durumu değişiyorsa meşru tekrar engellenmez --
+loop_page = page(<<~HTML, bg_links: 1)
+  <button id="arti" onclick="var e=document.getElementById('n');e.textContent=(parseInt(e.textContent,10)+1)">+</button>
+  <button id="bos" onclick="void 0">Boş</button>
+  <span id="n">0</span>
+HTML
+c.call("browser_navigate", { url: loop_page })
+p1 = 4.times.map { c.call("browser_click", { "selector" => "#arti" }) }
+check("P1 durum değişirken tekrar tıklama engellenmez", p1.none? { |x| x.include?("DÖNGÜ UYARISI") },
+      p1.map { |x| x.lines.first.to_s.strip }.join(" / "))
+sayi = c.call("browser_evaluate", { "script" => "return document.getElementById('n').textContent" })
+check("P2 dört tıklama da işlendi", sayi.to_s.strip == "4", sayi)
+p3 = 3.times.map { c.call("browser_click", { "selector" => "#bos" }) }
+check("P3 durum değişmezse üçüncü tekrar uyarır", p3.last.include?("DÖNGÜ UYARISI"),
+      p3.map { |x| x.lines.first.to_s.strip[0, 40] }.join(" / "))
+
 c.stop
 puts "\n#{PASS.size} geçti, #{FAIL.size} kaldı"
 exit(FAIL.empty? ? 0 : 1)

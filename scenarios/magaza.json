@@ -1,0 +1,61 @@
+{
+  "task": "magaza",
+  "desc": "Mağaza (yerel): sıralama menüsü → en ucuz ayakkabı → sepete 4 adet",
+  "recorded_at": "2026-10-26T21:46:21+0300",
+  "model": "google/gemma-4-e4b",
+  "answer": "Sepetteki ürün Aqua Plaj Ayakkabısı'dır, adet 4 ve toplam tutar 1326,20 TL'dir.",
+  "final_url": "http://127.0.0.1:8765/magaza",
+  "assert_js": null,
+  "assert_value": null,
+  "steps": [
+    {
+      "tool": "browser_navigate",
+      "args": {
+        "url": "http://127.0.0.1:8765/magaza"
+      },
+      "selector": null
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e1"
+      },
+      "selector": "#sirala-btn"
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e3"
+      },
+      "selector": "#opt-artan"
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e3"
+      },
+      "selector": "#liste > div:nth-of-type(2) > button:nth-of-type(1)"
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e7"
+      },
+      "selector": "#arti"
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e7"
+      },
+      "selector": "#arti"
+    },
+    {
+      "tool": "browser_click",
+      "args": {
+        "ref": "e7"
+      },
+      "selector": "#arti"
+    }
+  ]
+}

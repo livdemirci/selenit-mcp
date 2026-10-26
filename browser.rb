@@ -25,6 +25,18 @@ class SelenitBrowser
   POLL_INTERVAL = 0.1
   # Eylem sonrası toast toplama üst sınırı (sn); "0" ile kapatılabilir.
   TOAST_WAIT = (ENV["BROWSER_MCP_TOAST_WAIT"] || 0.6).to_f
+
+  # Bot/kötü niyet doğrulama ara ekranları (Cloudflare "Bir dakika lütfen",
+  # DataDome, "Just a moment", "Checking your browser" ...). Bu ekranlar
+  # sayfa yüklü görünür ama içerik YOKTUR; modeli linklerle baş başa
+  # bırakmak yerine kalkmasını bekle.
+  CHALLENGE_PATTERNS = [
+    /bir dakika lütfen/i, /just a moment/i, /checking your browser/i,
+    /verify(ing)? (that )?you are (a )?human/i, /attention required/i,
+    /güvenlik doğrulaması/i, /ddos protection/i,
+    /enable javascript and cookies/i, /access denied/i
+  ].freeze
+  CHALLENGE_WAIT = (ENV["BROWSER_MCP_CHALLENGE_WAIT"] || 20).to_f
   # Seçici DOM'da hiç yoksa (sayfa yüklüyken) bu sürede hızla reddet:
   # yanlış seçici 10 sn (wait_timeout) yanmasın.
   FAILFAST_PRESENCE = (ENV["BROWSER_MCP_FAILFAST"] || 1.25).to_f
@@ -234,6 +246,15 @@ class SelenitBrowser
     options.add_argument("--remote-debugging-port=#{@port}")
     options.add_argument("--headless=new") if @headless
     options.add_argument("--window-size=1280,900")
+    # "webdriver" izini azalt: bazı sitelerin bot doğrulaması yalnızca bu
+    # bayraklar yüzünden hiç geçilmiyor (Cloudflare challenge döngüsü).
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    begin
+      options.add_experimental_option("excludeSwitches", ["enable-automation"])
+      options.add_experimental_option("useAutomationExtension", false)
+    rescue StandardError
+      nil
+    end
     options.unhandled_prompt_behavior = :ignore
     options.detach = true
 
@@ -295,6 +316,19 @@ class SelenitBrowser
     end
     settle_interactive
     note = dismissed ? "not: açık uyarı kapatıldı (#{dismissed})\n" : ""
+    if challenge_page?
+      if wait_challenge_clear
+        wait_ready(5)
+        note += "not: site doğrulama ekranı beklenerek geçildi\n"
+      else
+        return "HATA (navigate): #{target} bir bot/kötü niyet doğrulama ekranı gösteriyor " \
+               "(Cloudflare/DataDome benzeri). Sayfa içeriği henüz yok.\n" \
+               "Öneri: birkaç saniye sonra browser_history(direction: reload) ile yenile ya da " \
+               "browser_wait_for(text: \"<sayfada beklenen metin>\", timeout: 30) ile doğrulamanın " \
+               "kalkmasını bekle. Doğrulama sürüyorsa siteyi normal bir Chrome penceresinde bir kez " \
+               "açıp (BROWSER_MODE=existing) aynı oturuma bağlanmak gerekir."
+      end
+    end
     note + snapshot_text(header: true)
   rescue Policy::Denied => e
     "ENGELLENDİ: #{e.message}"
@@ -302,9 +336,53 @@ class SelenitBrowser
     error("navigate", e)
   end
 
+  # Eylem sonrası sayfa durumu: URL + metin uzunluğu + metin karması.
+  # Döngü koruması "aynı çağrı gerçekten bir şey değiştirdi mi?" sorusunu
+  # buna bakarak yanıtlar (aynı "+" düğmesine 4 kez basmak meşrudur).
+  def state_signature
+    ensure_session
+    driver.execute_script(<<~JS)
+      var t = document.body ? (document.body.innerText || '') : '';
+      var h = 0, n = Math.min(t.length, 4000);
+      for (var i = 0; i < n; i++) h = ((h << 5) - h + t.charCodeAt(i)) | 0;
+      return [location.href, t.length, h].join('|');
+    JS
+  rescue StandardError
+    ""
+  end
+
   def snapshot
     ensure_session
     snapshot_text
+  end
+
+  def challenge_page?
+    baslik = driver.title.to_s
+    uzunluk = begin
+      driver.execute_script("return (document.body ? document.body.innerText.length : 0)").to_i
+    rescue StandardError
+      0
+    end
+    govde = begin
+      driver.execute_script("return (document.body ? document.body.innerText : '').slice(0, 600)").to_s
+    rescue StandardError
+      ""
+    end
+    # Doğrulama ekranları kısadır; uzun içerikli bir sayfada geçen
+    # "access denied" gibi ifadeler yanlış pozitif üretmesin.
+    return false if uzunluk > 2000
+    CHALLENGE_PATTERNS.any? { |re| re.match?(baslik) || re.match?(govde) }
+  rescue StandardError
+    false
+  end
+
+  def wait_challenge_clear(timeout = CHALLENGE_WAIT)
+    return false unless challenge_page?
+
+    wait_until(timeout: timeout, message: "site doğrulama ekranı kalkmadı") { !challenge_page? }
+    true
+  rescue Selenium::WebDriver::Error::TimeoutError
+    false
   end
 
   # Kompakt DOM okuması: snapshot'tan çok hafif (URL/başlık/uyarı/modal sayı),
@@ -364,7 +442,9 @@ class SelenitBrowser
         dizi.push({
           tag: n.tagName.toLowerCase(),
           metin: (n.innerText || "").replace(/\\s+/g, " ").slice(0, 70),
-          href: (n.getAttribute && n.getAttribute("href")) || null
+          href: (n.getAttribute && n.getAttribute("href")) || null,
+          sinif: (typeof n.className === "string" ? n.className : "").slice(0, 60) || null,
+          rol: n.getAttribute("role") || null
         });
       }
       out.oge = dizi;
@@ -550,9 +630,23 @@ class SelenitBrowser
     # Değerin gerçekten yazıldığını explicit bekle; arama/filtre gibi
     # input olaylarıyla DOM'u güncelleyen sayfalarda snapshot yarışını önler.
     if !submit && %w[input textarea].include?(element.tag_name)
-      begin
-        wait_until(timeout: 2) { element.attribute("value").to_s == text.to_s }
+      tip = (element.attribute("type") rescue "").to_s.downcase
+      yazildi = begin
+        wait_until(timeout: 2) do
+          driver.execute_script("return (arguments[0].value || '').toString()", element).to_s == text.to_s
+        end
+        true
       rescue Selenium::WebDriver::Error::TimeoutError
+        false
+      end
+      # Kontrollü (React/Vue) alanlar send_keys'i yutabiliyor: native setter +
+      # input/change olayı ile değeri gerçekten yerleştir.
+      js_set_value(element, text) unless yazildi
+      # Sayı alanları çoğu sitede blur/Enter ile commit edilir; aksi halde
+      # yazılan değer sepet/adet modeline geçmez.
+      begin
+        driver.execute_script("arguments[0].blur()", element) if %w[number tel].include?(tip)
+      rescue StandardError
         nil
       end
     end
@@ -676,11 +770,8 @@ class SelenitBrowser
     # Küçük modeller sık sık düğme ref'ini select alanında kullanıyor;
     # Selenium'un ham "unexpected tag name" hatası yerine etiketi söyle.
     tag = (element.tag_name rescue nil).to_s.downcase
-    if tag != "select"
-      return "HATA (select #{ref || selector}): bu öğe bir <select> değil, <#{tag}>.\n" \
-             "İpucu: normal <select> alanını browser_select ile seç; rol taşmayan özel açılır " \
-             "menülerde ise önce browser_click ile menüyü AÇ, sonra görünen seçenek ref'ini browser_click ile seç.\n#{snapshot_text}"
-    end
+    return custom_select(element, (label || value).to_s, ref || selector) if tag != "select"
+
     sel = Selenium::WebDriver::Support::Select.new(element)
     if label
       sel.select_by(:text, label.to_s)
@@ -695,6 +786,47 @@ class SelenitBrowser
     "seçildi: #{chosen.text} (value=#{chosen.attribute('value')})\n#{snapshot_text}"
   rescue StandardError => e
     error("select", e, ref || selector)
+  end
+
+  # role/class tabanlı özel açılır menüler (b-select, combobox, dropdown).
+  # <select> olmayan ama listbox açan bileşenlerde: aç → seçeneği metne göre bul → tıkla.
+  CUSTOM_OPTION_SELECTOR = '[role=option],li,[class*="option" i],[class*="select-item" i]'
+
+  def custom_select(element, hedef, hedef_adi)
+    hedef = hedef.to_s.strip
+    raise "value veya label gerekli" if hedef.empty?
+
+    acik = begin
+      element.attribute("aria-expanded").to_s == "true" ||
+        driver.execute_script("return !!(arguments[0].closest('[aria-expanded=\"true\"]'))", element)
+    rescue StandardError
+      false
+    end
+    element.click unless acik
+    wait_after_action
+    begin
+      wait_until(timeout: 2, ignore: []) do
+        driver.find_elements(:css, CUSTOM_OPTION_SELECTOR).any? { |el| (el.displayed? rescue false) }
+      end
+    rescue Selenium::WebDriver::Error::TimeoutError
+      nil
+    end
+
+    secenekler = driver.find_elements(:css, CUSTOM_OPTION_SELECTOR).select do |el|
+      (el.displayed? rescue false) && !element_metni(el).strip.empty?
+    end
+    needle = hedef.downcase
+    secilen = secenekler.find { |el| element_metni(el).strip.downcase == needle } ||
+              secenekler.find { |el| element_metni(el).strip.downcase.include?(needle) }
+    if secilen.nil?
+      liste = secenekler.map { |el| element_metni(el).strip[0, 24] }.uniq.first(8)
+      return "HATA (select #{hedef_adi}): '#{hedef}' seçeneği bulunamadı. " \
+             "Görünen seçenekler: #{liste.join(' | ')}. " \
+             "Menüyü browser_click ile açıp istediğin seçeneğin ref'ini browser_click ile seç."
+    end
+    click_element(secilen)
+    wait_after_action
+    "seçildi (özel menü): #{element_metni(secilen).strip[0, 40]}\n#{snapshot_text}#{harvest_toasts}"
   end
 
   # JS uyarı penceresi: kapat (varsayılan) veya sadece oku.
@@ -1182,8 +1314,10 @@ class SelenitBrowser
       else
         wait_until(timeout: t, message: "'#{needle}' görünmedi") do
           driver.execute_script(<<~JS, needle)
+            var n = (arguments[0] || '').toLowerCase();
             var body = document.body;
-            return !!(body && body.innerText && body.innerText.indexOf(arguments[0]) >= 0);
+            var metin = ((body && body.innerText) || '') + ' ' + (document.title || '') + ' ' + location.href;
+            return metin.toLowerCase().indexOf(n) >= 0;
           JS
         end
         "'#{needle}' göründü (#{driver.current_url})"
@@ -1493,25 +1627,30 @@ class SelenitBrowser
 
   # wait: :presence | :visible | :clickable
   def resolve(ref, selector, text, wait: :visible)
-    if text && !text.to_s.empty?
+    has_selector = !selector.to_s.empty?
+    has_text = !text.to_s.empty?
+    if has_text && !has_selector
       found = find(text, limit: 1)
       ref = found[/^f\d+/]
       raise "'#{text}' ile eşleşen öğe yok (browser_find kullan)" unless ref
     end
 
-    if (ref.nil? || ref.to_s.empty?) && (selector.nil? || selector.to_s.empty?)
+    if (ref.nil? || ref.to_s.empty?) && !has_selector
       raise "ref, selector veya text gerekli"
     end
 
+    # selector + text birlikte verilirse: aynı seçiciden dönen öğeler içinde
+    # görünen metne göre daralt (liste/menü seçenekleri, tekrarlayan düğmeler).
+    filter_text = has_selector && has_text ? text.to_s : nil
     element = nil
     start = nil
     begin
       wait_until(
-        message: "öğe bulunamadı veya #{wait} durumuna gelmedi (#{ref || selector}). " \
+        message: "öğe bulunamadı veya #{wait} durumuna gelmedi (#{ref || selector}#{filter_text ? " / metin: #{filter_text}" : ""}). " \
                  "Ref'ler her snapshot'ta yenilenir; önce browser_snapshot/browser_find çağır."
       ) do
         element = begin
-          find_element_once(ref, selector)
+          find_element_once(ref, selector, filter_text)
         rescue Selenium::WebDriver::Error::NoSuchElementError
           nil
         end
@@ -1552,7 +1691,14 @@ class SelenitBrowser
     element
   end
 
-  def find_element_once(ref, selector)
+  def element_metni(el)
+    [el.text, el.attribute("aria-label"), el.attribute("title"), el.attribute("value")]
+      .compact.join(" ").strip
+  rescue StandardError
+    ""
+  end
+
+  def find_element_once(ref, selector, filter_text = nil)
     if selector && !selector.to_s.empty?
       sel = selector.to_s
       if sel.start_with?("shadow::")
@@ -1561,7 +1707,27 @@ class SelenitBrowser
         raise Selenium::WebDriver::Error::NoSuchElementError, sel if element.nil?
         return element
       end
-      return driver.find_element(:css, sel)
+      # Aynı seçici birden çok öğe döndürebilir (menü + gizli kopya). İlk
+      # eşleşme gizliyse tıklama hiç yapılamıyordu; GÖRÜNÜR olanı tercih et.
+      elements = driver.find_elements(:css, sel)
+      raise Selenium::WebDriver::Error::NoSuchElementError, sel if elements.empty?
+
+      gorunen = elements.select do |el|
+        begin
+          el.displayed?
+        rescue StandardError
+          false
+        end
+      end
+      adaylar = gorunen.empty? ? elements : gorunen
+      unless filter_text.to_s.empty?
+        needle = filter_text.to_s.downcase
+        adaylar = adaylar.select { |el| element_metni(el).downcase.include?(needle) }
+        if adaylar.empty?
+          raise Selenium::WebDriver::Error::NoSuchElementError, "#{sel} (metin: #{filter_text})"
+        end
+      end
+      return adaylar.first
     end
 
     element = driver.execute_script(FIND_BY_REF_JS, ref.to_s)
@@ -1636,8 +1802,24 @@ class SelenitBrowser
     return find(document, arguments[0]);
   JS
 
-  def wait_ready(timeout = READY_TIMEOUT)
-    # Geçiş anındaki bağlam hatalarını yut ve koşulu tekrar dene; sabit bekleme yok.
+  # Kontrollü (React/Vue) input/textarea için değeri native setter ile yaz ve
+  # framework'lerin dinlediği input/change olaylarını yayınla.
+  def js_set_value(element, value)
+    driver.execute_script(<<~JS, element, value.to_s)
+      var el = arguments[0], val = arguments[1];
+      var proto = (el.tagName || '').toLowerCase() === 'textarea'
+        ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+      var setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
+      setter.call(el, val);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    JS
+    true
+  rescue StandardError
+    false
+  end
+
+  def wait_ready(timeout = READY_TIMEOUT)    # Geçiş anındaki bağlam hatalarını yut ve koşulu tekrar dene; sabit bekleme yok.
     wait_until(timeout: timeout, ignore: [Selenium::WebDriver::Error::WebDriverError]) do
       driver.execute_script("return document.readyState") == "complete"
     end
@@ -1649,6 +1831,7 @@ class SelenitBrowser
     false
   end
 
+  # Etkileşimli öğe sayısı kısa süre değişmiyorsa DOM "oturdu" sayılır.
   # Tıklama/yazma sonrası: URL değiştiyse (navigasyon) veya sayfa hazırsa devam et.
   # Navigasyon yoksa explicit wait kısa sürede biter; sabit sleep kullanılmaz.
   def wait_after_action(previous_url: nil, timeout: 3)
@@ -1772,6 +1955,8 @@ class SelenitBrowser
 
       var q = 'a[href],button,input,textarea,select,summary,' +
               '[role=button],[role=link],[role=textbox],[role=option],[role=menuitem],' +
+              '[aria-haspopup],[aria-expanded],[role=combobox],[role=menu],' +
+              '[class*="select-option" i],[class*="select__option" i],' +
               'div[class*="option" i],li[class*="option" i],' +
               'div[class*="menu-item" i],li[class*="menu-item" i],[onclick]';
       var exact = [];

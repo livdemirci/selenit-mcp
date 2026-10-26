@@ -32,9 +32,10 @@ class Llm
       messages: messages,
       temperature: 0,
       max_tokens: (ENV["BENCH_MAX_TOKENS"] || 800).to_i,
-      # Gemma gibi düşünmeli şablonlarla BENCH_THINKING=0 verildiğinde düşünme kapalı:
-      # her adımda "Thinking Process" üretilmez, araç çağrısı bütçesi verime gider.
-      **(ENV["BENCH_THINKING"] == "0" ? { chat_template_kwargs: { enable_thinking: false } } : {}),
+      # Gemma gibi düşünmeli şablonlarda düşünme VARSAYILAN OLARAK KAPALI:
+      # her adımda "Thinking Process" üretilmesin, araç çağrısı bütçesi verime
+      # gitsin. Açmak için BENCH_THINKING=1.
+      **(ENV.fetch("BENCH_THINKING", "0") == "0" ? { chat_template_kwargs: { enable_thinking: false } } : {}),
       tools: tools.map do |t|
         {
           type: "function",
@@ -104,6 +105,7 @@ def run_task(key, spec, mcp, llm, tools)
     Dir[File.join(dir, "*")].each { |f| FileUtils.rm_rf(f) }
   end
 
+  bos_yanit = 0
   MAX_STEPS.times do |step|
     begin
       data = llm.chat(messages, tools)
@@ -118,6 +120,14 @@ def run_task(key, spec, mcp, llm, tools)
 
     if calls.empty?
       answer = msg["content"].to_s.strip
+      # Küçük modeller ara sıra boş içerik + araç çağrısı olmadan durabiliyor;
+      # görevi sessizce yarıda bırakmak yerine bir kez nazikçe yönlendir.
+      if answer.empty? && bos_yanit.zero?
+        bos_yanit += 1
+        messages << { role: "user", content: "Yanıtın boş geldi. Göreve devam et ve sıradaki adımı TEK araç çağrısıyla yap." }
+        trace << "boş yanıt: model bir kez yönlendirildi"
+        next
+      end
       break
     end
 
@@ -135,7 +145,8 @@ def run_task(key, spec, mcp, llm, tools)
       selector = ACTION_TOOLS.include?(name) ? selector_for(mcp, args["ref"]) : nil
       output = mcp.call(name, args)
 
-      if ACTION_TOOLS.include?(name)
+      if ACTION_TOOLS.include?(name) &&
+         !output.to_s.match?(/\A(DÖNGÜ UYARISI|HATA|ENGELLENDİ|ONAY GEREKLİ)/)
         record = { "tool" => name, "args" => args, "selector" => selector }
         if name == "browser_tabs" && args["action"].to_s == "switch"
           # Index yerine URL kaydet: replay sırasında sekme sırası değişse de doğru sekmeye gider.

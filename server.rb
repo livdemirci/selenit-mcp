@@ -17,6 +17,12 @@ Encoding.default_internal = nil
 
 PROTOCOL_VERSION = "2024-11-05"
 
+SERVER_VERSION = begin
+  JSON.parse(File.read(File.expand_path("package.json", __dir__)))["version"].to_s
+rescue StandardError
+  "0.0.0"
+end
+
 # Tek araç çağrısı için üst sınır. Chromedriver bir pencere kapanınca bazen
 # HTTP cevbInı asılı bırakabilir; asistan cevapsız beklemesin.
 OP_TIMEOUT = (ENV["BROWSER_MCP_OP_TIMEOUT"] || 120).to_i
@@ -33,7 +39,8 @@ module Tools
   LIST = [
     {
       name: "browser_navigate",
-      description: "Verilen adrese git ve kısa sayfa dökümü döndür.",
+      description: "Verilen adrese git ve kısa sayfa dökümü döndür. Bot doğrulama ekranı " \
+                   "(Cloudflare 'Bir dakika lütfen' vb.) görülürse kalkmasını bekler.",
       inputSchema: {
         type: "object",
         properties: { url: { type: "string", description: "Adres, örn. https://www.google.com" } },
@@ -58,7 +65,8 @@ module Tools
     },
     {
       name: "browser_click",
-      description: "ref (örn. e3), CSS selector veya görünen metin ile öğeye tıkla.",
+      description: "ref (örn. e3), CSS selector veya görünen metin ile öğeye tıkla. " \
+                   "selector + text birlikte verilirse aynı seçiciden gelen öğeler metne göre daraltılır.",
       inputSchema: {
         type: "object",
         properties: {
@@ -88,7 +96,8 @@ module Tools
     },
     {
       name: "browser_select",
-      description: "Açılır listeden (select) seçenek seç.",
+      description: "Açılır listeden seçenek seç. Normal <select> alanları ve role/class tabanlı " \
+                   "özel açılır menüler (combobox, b-select, dropdown) desteklenir.",
       inputSchema: {
         type: "object",
         properties: {
@@ -272,16 +281,41 @@ end
 $browser = nil
 $recent_calls = []
 
+# Salt-okuma araçları döngü sayacına girmez: model "değişti mi?" diye aynı
+# snapshot/dom/wait_for'u tekrar çağırabilmelidir.
+SALT_OKUMA = %w[
+  browser_screenshot browser_status browser_snapshot browser_dom
+  browser_read browser_find browser_wait_for browser_evaluate
+].freeze
+
+# Sayfayı değiştirebilen araçlar: döngü koruması bunlarda eylem sonrası
+# durum imzasını da karşılaştırır.
+DURUM_IZLEYEN = %w[
+  browser_navigate browser_click browser_type browser_select browser_press_key
+  browser_scroll browser_history browser_tabs browser_upload browser_frame
+].freeze
+
 def browser
   $browser ||= SelenitBrowser.new
 end
 
-# Küçük modeller aynı çağrıyı döngüye alabilir; 3 kez aynısı gelirse uyar.
-def repeated_call?(name, args)
-  signature = [name, args.sort_by { |k, _| k.to_s }.to_s]
-  $recent_calls << signature
-  $recent_calls.shift while $recent_calls.size > 6
-  $recent_calls.count(signature) >= 3 && !%w[browser_screenshot browser_status].include?(name)
+# Küçük modeller aynı çağrıyı döngüye alabilir. Aynı araç+argüman 3. kez
+# geldiğinde, son iki sonuç BİREBİR AYNIYSA gerçek döngüdür. "+" düğmesine
+# dört kez basmak gibi meşru tekrarlarda çıktı değişir (adet 2 → 3), engellenmez.
+def loop_warning?(name, signature)
+  return false if SALT_OKUMA.include?(name)
+
+  gecmis = $recent_calls.select { |s, _| s == signature }
+  return false if gecmis.size < 2
+
+  onceki, simdiki = gecmis[-2], gecmis[-1]
+  # Sonuç VEYA sayfa durumu değiştiyse ilerleme var → döngü değil.
+  onceki[1] == simdiki[1] && onceki[2] == simdiki[2]
+end
+
+def record_call(signature, result, state)
+  $recent_calls << [signature, result.to_s, state]
+  $recent_calls.shift while $recent_calls.size > 8
 end
 
 # Döngü uyarısı: aynı çağrının 3. tekrarında modele NE YAPACAĞINI söyle ve
@@ -320,17 +354,15 @@ def dongu_uyarisi(name)
 end
 
 def call_tool(name, args)
-  if repeated_call?(name, args)
-    # Küçük modeller uyarı metnini okuyup yön değiştirmekte zorlanıyor.
-    # Hepsiburada/n11 ölçümü: 6-10 adım aynı çağrıyı tekrarladılar çünkü uyarı
-    # (a) sayfa içeriği döndürmüyordu (model körsüz kalıyordu) ve
-    # (b) browser_snapshot döngüsünde "snapshot kullan" diyerek aynı şeyi
-    #     öneriyordu. Artık uyarı yönlendirici ve durum bilgisi içeriyor.
-    return dongu_uyarisi(name)
-  end
+  signature = [name, args.sort_by { |k, _| k.to_s }.to_s]
+  # Aynı çağrı 3. kez gelmiş VE sonuç/sayfa durumu değişmemişse gerçek döngü:
+  # modele ne yapacağını söyleyen, sayfa durumunu da içeren uyarıyı döndür.
+  return dongu_uyarisi(name) if loop_warning?(name, signature)
 
   started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
   result = Timeout.timeout(OP_TIMEOUT) { dispatch_tool(name, args) }
+  durum = DURUM_IZLEYEN.include?(name) ? (browser.state_signature rescue nil) : nil
+  record_call(signature, result, durum)
   Audit.log(
     tool: name, args: args, ok: !result.to_s.match?(/\A(HATA|ENGELLENİR|ENGELLENDİ|ONAY GEREKLİ)/),
     detail: result, seconds: (Process.clock_gettime(Process::CLOCK_MONOTONIC) - started).round(2)
@@ -390,7 +422,7 @@ def handle(request)
     respond(id, {
       protocolVersion: PROTOCOL_VERSION,
       capabilities: { tools: { listChanged: false } },
-      serverInfo: { name: "selenit-mcp", version: "0.1.0" }
+      serverInfo: { name: "selenit-mcp", version: SERVER_VERSION }
     })
   when "notifications/initialized", "initialized"
     # bildirim: yanıt yok

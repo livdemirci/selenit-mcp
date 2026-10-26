@@ -10,6 +10,7 @@ Senaryolar:
   /upload      dosya yükleme
   /tabs        yeni sekmede açılan bağlantı
   /alerts      alert / confirm / prompt
+  /magaza      sıralama menüsü (aria-haspopup) + sepet adedi — e-ticaret provası
 
 Çalıştırma: python3 server.py [port]
 """
@@ -307,12 +308,109 @@ INDEX = """<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Zor
 <li><a href="/alerts">Uyarılar</a></li>
 <li><a href="/download">Rapor indir (PDF)</a></li>
 <li><a href="/mixed">Karma senaryo (oturum + AJAX + tablo/modal + shadow + iframe)</a></li>
+<li><a href="/magaza">Mağaza (sıralama menüsü + sepet adedi)</a></li>
 </ul></body></html>"""
 
-PAGES = {
-    "/": INDEX, "/login": LOGIN, "/dashboard": DASHBOARD, "/dynamic": DYNAMIC,
+MAGAZA = """<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Mağaza</title>
+<style>.kart{border:1px solid #ddd;padding:10px;margin:8px 0;max-width:320px}</style></head>
+<body>
+<h1>Mağaza</h1>
+<div class="b-dropdown">
+  <button id="sirala-btn" aria-haspopup="listbox" aria-expanded="false">Önerilen Sıralama</button>
+  <ul id="sirala-menu" role="listbox" style="display:none;border:1px solid #ccc;max-width:260px">
+    <li role="option" id="opt-varsayilan">Önerilen Sıralama</li>
+    <li role="option" id="opt-artan">Fiyat - Düşükten Yükseğe</li>
+  </ul>
+</div>
+<div id="liste"></div>
+<div id="sepet" style="margin-top:30px;border-top:2px solid #333;max-width:320px">
+  <h2>Sepetim</h2>
+  <p><span id="sepet-adet">0</span> ürün</p>
+  <p id="sepet-detay"></p>
+  <div id="sayac" style="display:none">
+    <button id="eksi" type="button">-</button>
+    <input id="adet-input" type="number" value="1" min="1" max="5" style="width:60px">
+    <button id="arti" type="button">+</button>
+  </div>
+</div>
+<script>
+var URUNLER = [
+  { ad: 'Derimod Bakım Süngeri', fiyat: 149.99 },
+  { ad: 'Aqua Plaj Ayakkabısı', fiyat: 331.55 },
+  { ad: 'Sneaker Günlük Ayakkabı', fiyat: 459.00 }
+];
+var secili = null, adet = 0, artan = false;
+
+function tl(n) { return n.toFixed(2).replace('.', ',') + ' TL'; }
+
+function cizListe() {
+  var dizi = URUNLER.slice().sort(function (a, b) { return artan ? a.fiyat - b.fiyat : 0; });
+  var liste = document.getElementById('liste');
+  liste.innerHTML = '';
+  dizi.forEach(function (u) {
+    var kart = document.createElement('div');
+    kart.className = 'kart';
+    var h = document.createElement('h3'); h.textContent = u.ad;
+    var p = document.createElement('p'); p.textContent = tl(u.fiyat);
+    var b = document.createElement('button');
+    b.type = 'button'; b.textContent = 'Sepete Ekle';
+    b.onclick = function () {
+      if (secili !== u) { secili = u; adet = 1; }
+      else if (adet < 5) { adet += 1; }
+      cizSepet();
+    };
+    kart.appendChild(h); kart.appendChild(p); kart.appendChild(b);
+    liste.appendChild(kart);
+  });
+}
+
+function cizSepet() {
+  document.getElementById('sepet-adet').textContent = adet;
+  document.getElementById('sepet-detay').textContent =
+    secili && adet ? secili.ad + ' x ' + adet + ' = ' + tl(secili.fiyat * adet) : '';
+  document.getElementById('sayac').style.display = adet ? 'block' : 'none';
+  var g = document.getElementById('adet-input');
+  if (g && document.activeElement !== g) g.value = adet;
+}
+
+document.getElementById('sirala-btn').onclick = function () {
+  var m = document.getElementById('sirala-menu');
+  var acik = m.style.display === 'block';
+  m.style.display = acik ? 'none' : 'block';
+  this.setAttribute('aria-expanded', acik ? 'false' : 'true');
+};
+document.getElementById('opt-varsayilan').onclick = function () {
+  artan = false;
+  document.getElementById('sirala-btn').textContent = 'Önerilen Sıralama';
+  document.getElementById('sirala-menu').style.display = 'none';
+  cizListe();
+};
+document.getElementById('opt-artan').onclick = function () {
+  artan = true;
+  document.getElementById('sirala-btn').textContent = 'Fiyat - Düşükten Yükseğe';
+  document.getElementById('sirala-menu').style.display = 'none';
+  document.getElementById('sirala-btn').setAttribute('aria-expanded', 'false');
+  cizListe();
+};
+document.getElementById('arti').onclick = function () {
+  if (adet < 5) { adet += 1; cizSepet(); }
+};
+document.getElementById('eksi').onclick = function () {
+  if (adet > 1) { adet -= 1; cizSepet(); }
+};
+document.getElementById('adet-input').onchange = function () {
+  var v = parseInt(this.value, 10);
+  adet = isNaN(v) ? 1 : Math.max(1, Math.min(5, v));
+  cizSepet();
+};
+cizListe();
+</script>
+</body></html>"""
+
+PAGES = {    "/": INDEX, "/login": LOGIN, "/dashboard": DASHBOARD, "/dynamic": DYNAMIC,
     "/frame": FRAME, "/inner": INNER, "/shadow": SHADOW, "/upload": UPLOAD,
     "/tabs": TABS, "/tab2": TAB2, "/alerts": ALERTS, "/mixed": MIXED,
+    "/magaza": MAGAZA,
 }
 
 
