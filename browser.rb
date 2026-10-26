@@ -782,8 +782,18 @@ class SelenitBrowser
         sel.select_by(:text, value.to_s)
       end
     end
-    chosen = sel.first_selected_option
-    "seçildi: #{chosen.text} (value=#{chosen.attribute('value')})\n#{snapshot_text}"
+    chosen = begin
+      o = sel.first_selected_option
+      "seçildi: #{o.text} (value=#{o.attribute('value')})"
+    rescue Selenium::WebDriver::Error::StaleElementReferenceError,
+           Selenium::WebDriver::Error::NoSuchElementError
+      # Sayfa seçim anında yenilendi (onchange → navigasyon): eylem başarılı,
+      # eski element referansı çöktü. HATA döndürmek modeli gereksiz tekrara
+      # sokuyordu; yeni sayfada doğrulaması için not düş.
+      wait_after_action
+      "seçildi: #{label || value} (sayfa yenilendi; sıralama/filtre yeni yüklemede geçerli)"
+    end
+    "#{chosen}\n#{snapshot_text}"
   rescue StandardError => e
     error("select", e, ref || selector)
   end
