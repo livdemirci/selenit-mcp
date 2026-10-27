@@ -262,10 +262,21 @@ TASKS = {
     # farklı bir görünüme geçen sitelerde yanlış negatif üretiyordu.)
     check: lambda do |_mcp, answer|
       a = answer.to_s
-      # "ürün | fiyat" formatı: fiyat deseni + ürün adı (en az 10 karakter).
-      fiyat = a.match?(/\d[\d.,]*\s*(?:TL|₺|\$|€|£)/)
-      urun = a.include?("|") && a.split("|", 2)[0].to_s.strip.length >= 10
-      fiyat && urun
+      return false unless a.match?(/\d[\d.,]*\s*(?:TL|₺|\$|€|£)/)
+
+      # Ürün adı kontrolü BİÇİM BAĞIMSIZ olmalı: model bazen "ürün | ad fiyat |
+      # 99,90 TL" gibi fazladan ayraç/etiket ekliyor ve split("|",2) ile alınan
+      # ilk parça "ürün " (5 karakter) kalıyordu → yanlış negatif.
+      # Bu yüzden ayraçlara ve şablon etiketlerine bakılmaz: cevapta fiyat
+      # deseninin DIŞINDA en az 10 karakterlik bir metin var mı diye bakılır.
+      sade = a.gsub(/\d[\d.,]*\s*(?:TL|₺|\$|€|£)/, " ")
+              .gsub(/\b(ürün|urun|fiyat|ad|isim|product|price)\b/i, " ")
+              .gsub(/[|:·—\-]/, " ")
+              .gsub(/\s+/, " ")
+              .strip
+      # Eşik 5: kısa ama anlamlı ürün adları ("Kalem") elenmemeli.
+      # Şablon cevabı ("ürün | fiyat") zaten fiyat dışı metin bırakmaz.
+      sade.length >= 5
     end
   }
 }.freeze
