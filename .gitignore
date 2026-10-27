@@ -1,13 +1,13 @@
-Gemfile.lock
-artifacts/
-tmp/
-*.log
-.DS_Store
-*.screen
-.ipynb_checkpoints/
-*.tgz
-node_modules/
 
 # Yayın taslakları (Medium vb.) — repoya ait değil
+*.log
+*.screen
+*.tgz
+.DS_Store
+.ipynb_checkpoints/
+.playwright-mcp/
+Gemfile.lock
+artifacts/
 medium-draft*.md
-
+node_modules/
+tmp/

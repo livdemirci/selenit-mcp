@@ -2,7 +2,7 @@
 // Küçük modeller (Gemma E4B) için kısa tutulur; her öğeye data-sl-ref="eN" yazılır.
 // - Açık modal varsa yalnızca modal içeriği listelenir (arka plan gürültüsü gitmez).
 //   Modal tespiti artık role=dialog/aria-modal dışında class sinyalleriyle de yapılır
-//   (ör. Trendyol'un .modal-container'ı role taşımaz); aday, görünüp ekran merkezini
+//   (ör. e-ticaret'un .modal-container'ı role taşımaz); aday, görünüp ekran merkezini
 //   kapatıyorsa modal sayılır.
 // - role arzı olmayan engelleyici öğeler (çerez bandı, bildirim kutusu gibi
 //   position:fixed + yüksek z-index overlay'ler) ilk MAX'e sweep öncelikle girer.
@@ -17,7 +17,7 @@ return (function (maxElements) {
           // Toast'lar (başarı/hata bildirimleri) model için önemlidir: "Ürün sepete
           // eklendi", "ürün temin edilemiyor" gibi dönütleri görünür kılar.
           '[role=alert],[role=status],' +
-          // Hepsiburada vb. siteler toast'lara role vermez (hb-toast-notifier-*).
+          // liste sitesi vb. siteler toast'lara role vermez (hb-toast-notifier-*).
           '[class*="toast" i],' +
           // Sepete ekleme ikonu metinsiz SVG'dir (HBI spinnerIcon); kart
           // bağlamıyla vermek modelin hedef bulmasını sağlar.
@@ -63,7 +63,10 @@ return (function (maxElements) {
   }
 
   // Fiyat deseni: ürün kartı bağlamını sınıf adına bağlı kalmadan bulmak için.
-  var FIYAT_RE = /(\d{1,3}(?:[.\s]\d{3})*|\d+)[.,]\d{2}\s*(TL|₺|\$|€|USD|EUR)/i;
+  // Tek ve esnek fiyat deseni — iki ayrı tanım çakışıyordu (biri yalnızca
+  // kuruşlu "57,97 TL", öteki yalnızca "399 TL" yakalıyordu). Hem "166,84 TL"
+  // hem "172 TL" hem "1.299,00 ₺" eşleşmeli.
+  var FIYAT_RE = /\d[\d.,]*\s*(?:TL|₺|\$|€|£|USD|EUR)\b|(?:₺|\$|€|£)\s*\d/i;
 
   function describe(el) {
     var name = (el.getAttribute('aria-label') ||
@@ -97,29 +100,41 @@ return (function (maxElements) {
     // Ürün kartı bağlamı: kart/tablo dışında aynı etiketle tekrar eden
     // düğmeleri (ör. "Sepete Ekle") ayırt etmek için kart başlığı + fiyat
     // eklenir: "Sepete Ekle | CEPFİT ... · 57,97 TL".
-    var kart = el.closest
-      ? el.closest('[data-testid*="card"],.product-card,[class*="product-card"],[class*="p-card"],[class*="productCard"]')
-      : null;
-    // Sınıf adı ürün kartı sinyali vermiyorsa fiyat deseninden bul: fiyat
-    // gösteren EN YAKIN ata (her e-ticaret kartında fiyat vardır). Böylece
-    // "kart", "verticalProduct", "productListContent" gibi siteye özgü
-    // sınıf adlarına bağımlı kalmadan tekrar eden düğmeler ayırt edilir.
-    if (!kart) {
-      var aday = el.parentElement;
-      var derinlik = 0;
-      while (aday && derinlik < 6 && aday !== document.body) {
-        var adayMetin = (aday.innerText || '');
-        var adayKontroller = aday.querySelectorAll('a,button,input,select,textarea').length;
-        if (adayMetin.length > 0 && adayMetin.length <= 420 &&
-            adayKontroller <= 4 && FIYAT_RE.test(adayMetin)) {
-          kart = aday;
-          break;
-        }
-        aday = aday.parentElement;
-        derinlik++;
+    // ------------------------------------------------------------------
+    // KART BAĞLAMI — ALGORİTMİK
+    // ------------------------------------------------------------------
+    // Eski yaklaşım `closest('[class*=productCard]')` ile en yakın sınıf
+    // eşleşmesini alıyordu. liste-sayfası ölçümü: bu, fiyatı TAŞIMAYAN
+    // `a.productCardLink` öğesine denk geliyor, fiyat kardeş <div>'de
+    // kalıyordu → dump'ta hiç fiyat görünmüyordu.
+    //
+    // Artık sıra: (1) yukarı yürü, fiyat sinyali taşıyan İLK ATA kart;
+    //              (2) kart havuzu üyesi ilk ata (yapısal tekrar);
+    //              (3) hiçbiri yoksa kart bağlamı yok.
+    // Böylece sınıf adına değil, sayfada ölçülen iki sinyale dayanır.
+    var kart = null;
+    var p1 = el;
+    for (var dp = 0; dp < 8 && p1 && p1 !== document.body; dp++, p1 = p1.parentElement) {
+      if (dp === 0 && el === row) continue;              // satır kendisi sayılmaz
+      var t1 = p1.innerText || '';
+      if (t1.length >= 8 && t1.length <= 420 && FIYAT_RE.test(t1)) {
+        // Kart içinde makul sayıda denetim olmalı (tüm sayfa değil).
+        var k1 = p1.querySelectorAll ? p1.querySelectorAll('a,button,input,select,textarea').length : 0;
+        if (k1 <= 6) { kart = p1; break; }
       }
     }
-    if (kart && kart !== el && kart !== row) {
+    if (!kart) {
+      var p2 = el.parentElement;
+      for (var dq = 0; dq < 6 && p2 && p2 !== document.body; dq++, p2 = p2.parentElement) {
+        var c2 = (typeof p2.className === 'string' ? p2.className : '').trim().split(/\s+/)[0];
+        if (c2 && kartHavuzu[c2]) { kart = p2; break; }
+      }
+    }
+    // Kart kendisi de olabilir; fiyat her durumda eklensin.
+    // NOT: eski `kart !== row` koşulu liste sitesi'da bloğu tümüyle atlıyordu
+    // (kart <li> ile aynı öğeydi ve row'a eşit çıkıyordu) → fiyat hiç
+    // görünmüyordu. Satır bağlamı zaten üstte ayrıca işlendi.
+    if (kart) {
       var satirlar = (kart.innerText || '').split('\n').map(function (s) {
         return s.replace(/\s+/g, ' ').trim();
       }).filter(Boolean);
@@ -137,11 +152,14 @@ return (function (maxElements) {
         if (!baslik || s.length > baslik.length) baslik = s;
       }
       // Fiyat sona yakınsa kaybolmasın: başlık kırpılır, fiyat korunur.
-      var kctx = baslik.slice(0, 42);
+      // Fiyat HER ZAMAN eklenir (model fiyatı görmeli). Başlık yalnızca
+      // elementin kendi adı kısa/genel olduğunda eklenir — ürün adını taşıyan
+      // uzun isimlere başlık tekrarı yazılmaz.
+      var baslikEkle = (kart !== el) && name.length < 24 && baslik && name.indexOf(baslik) === -1;
+      var kctx = baslikEkle ? baslik.slice(0, 42) : '';
       if (fiyat) kctx = (kctx ? kctx + ' · ' : '') + fiyat;
       kctx = kctx.slice(0, 60);
-      // Kendi adı zaten açıklayıcı olan öğelere (ör. başlık bağlantısı) bağlam ezme.
-      if (kctx && name.length < 24 && name.indexOf(baslik) === -1) name = name + ' | ' + kctx;
+      if (kctx) name = name + ' | ' + kctx;
     }
 
     if (name.length > 90) name = name.slice(0, 90) + '…';
@@ -171,9 +189,28 @@ return (function (maxElements) {
     toplanan.push({ el: el, shadow: !!inShadow });
   }
 
+  // Kart havuzundaki sınıf imzaları için selector'ü genişlet: ürün kartları
+  // çoğu sitede etkileşimli etiket DEĞİL, sadece <div>. liste-sayfası ölçümü:
+  // productCard-module_productInfoRoot div olduğu için q selector'üne hiç
+  // uymuyordu → 2797 etkileşimli öğeli sayfada 11 item toplanıyordu.
+  function kartSelectorleri() {
+    var ks = Object.keys(kartHavuzu);
+    var sec = [];
+    for (var i = 0; i < ks.length; i++) {
+      sec.push('[class~="' + ks[i].replace(/"/g, '\\"') + '"]');
+    }
+    return sec.join(',');
+  }
+
   function walk(root, inShadow) {
     var els = root.querySelectorAll(q);
     for (var k = 0; k < els.length; k++) toplama_hedef(els[k], inShadow);
+    // Kart havuzu üyeleri ayrıca taranır (etkileşimli olmasalar da).
+    var ks = kartSelectorleri();
+    if (ks) {
+      var kartlar = root.querySelectorAll(ks);
+      for (var m = 0; m < kartlar.length; m++) toplama_hedef(kartlar[m], inShadow);
+    }
     root.querySelectorAll('*').forEach(function (host) {
       if (host.shadowRoot) walk(host.shadowRoot, true);
     });
@@ -244,14 +281,14 @@ return (function (maxElements) {
   // Ürün kartı içindeki öğeler (sepete ekle ikonu, fiyatlı kart linkleri)
   // menü linklerinden ÖNCE listelenir.
   //
-  // KARŞI DENGE (n11.com ölçümü): ürün kartı önceliği bu kez ters yönde
+  // KARŞI DENGE (SPA.com ölçümü): ürün kartı önceliği bu kez ters yönde
   // bozuluyordu — 485 etkileşimli öğeli ana sayfada ilk 40 slotu tamamen ürün
   // kartları dolduruyor, header'daki ARAMA KUTUSU hiç sıra alamıyordu.
   // Arama kutusu bir sitenin en kritik kontrolüdür; model onu göremezse görev
   // ilk adımda ölür. Bu yüzden form alanları (input/textarea/select) her zaman
   // ürün kartlarından ÖNCE gelir.
   // Metin girişi alanı mı? (Arama kutusu, form alanı — görevin başlaması için şart.)
-  // Hepsiburada ölçümü: buradaki tanım <input> etiketinin TAMAMINI kapsıyordu,
+  // liste-sayfası ölçümü: buradaki tanım <input> etiketinin TAMAMINI kapsıyordu,
   // dolayısıyla sol filtrenin marka checkbox'ları (rotring, fabercastell, …)
   // "giriş alanı" sayılıp ilk sıraları alıyor ve ürünler döküme hiç girmiyordu.
   // Artık yalnızca metin benzeri alanlar giriş sayılır.
@@ -267,10 +304,10 @@ return (function (maxElements) {
   }
 
   // Birincil eylem düğmeleri: "Sepete Ekle", "Satın Al", "Kaydet", "Gönder".
-  // n11 ürün sayfası ölçümü: ürün öneri kartları MAX bütçesini doldurup asıl
+  // SPA ürün sayfası ölçümü: ürün öneri kartları MAX bütçesini doldurup asıl
   // "Sepete Ekle" (BUTTON.add-to-cart-btn) dump'a hiç giremiyordu. Sayfanın
   // ana eylemi, öneri kartlarından her zaman daha önemlidir.
-  // Trendyol ölçümü: arama kutusu <input> DEĞİL — metinsiz bir ikon düğmesi
+  // e-ticaret ölçümü: arama kutusu <input> DEĞİL — metinsiz bir ikon düğmesi
   // (button[data-testid=suggestion-placeholder]); tıklanınca arama overlay'i
   // açılıyor. Bu yüzden arama-benzeri düğmeler de birincil sayılır.
   function birincil_eylem(el) {
@@ -293,69 +330,175 @@ return (function (maxElements) {
   // Combobox/dropdown ve metninde sırala/filtre geçen denetimler öne alınır.
   //
   // AMA: bu sezgisel çok geniş olursa liste sayfasının TAMAMI kontrol sayılır.
-  // Vatan Bilgisayar ölçümü: 229 öğenin 69'u "kontrol" sınıfına düşüyordu
+  // yoğun filtreli bir liste sitesi ölçümü: 229 öğenin 69'u "kontrol" sınıfına düşüyordu
   // (marka/kategori linkleri de eşleşiyor), ilk 40 slotu onlar doldurup
   // ürünler hiç sıra alamıyordu (ilk 40'ta 0 ürün kartı). Bu yüzden:
   //   - yalnızca GERÇEK form denetimleri (<select>, role=combobox, [aria-haspopup])
   //     ya da kısa metinli (< 40 karakter) sırala/filtre düğmeleri sayılır;
   //   - <a href> bağlantıları asla kontrol sayılmaz (onlar navigasyondur).
+  // =====================================================================
+  // ÜRÜN KARTI + DENETİM TESPİTİ — ALGORİTMİK (site adı yok)
+  // =====================================================================
+  // Ölçülebilir üç yapısal sinyal; sabit site kuralları yerine sayfa
+  // başına hesaplanan eşikler kullanılır.
+  //
+  //  (A) YAPISAL TEKRAR — liste sayfalarında ürün kartları AYNI class'ı
+  //      paylaşan kardeş öğelerdir. Tüm DOM'da 3..200 kez tekrar eden sınıf
+  //      imzaları çıkarılır ("kart havuzu").
+  //      Ölçüm: SPA product-item=20, e-ticaret product-card=36,
+  //      liste sitesi productCardLink=72.
+  //
+  //  (B) FİYAT SİNYALİ — kart metninde para birimi taşıyan sayı.
+  //      Para birimi evrenseldir (TL/₺/$/€/£). Filtreleri ayırmak için
+  //      form denetimleri ve ARALIK+AÇIKLAMA kalıbı elenir.
+  //
+  //  (C) BAĞLANTI YOĞUNLUĞU — kartta <a href> olmalı; ama her çocuk link ise
+  //      bu bir menüdür (sol filtre/footer), kart değil.
+  var PARA_RE = /\d[\d.,]*\s*(?:TL|₺|\$|€|£|USD|EUR)\b|(?:₺|\$|€|£)\s*\d/i;
+  var ARALIK_RE = /^\s*\d[\d.,]*\s*[-–]\s*\d[\d.,]*\s*(?:TL|₺|\$|€|£)?\s*(?:\(\s*\d+\s*\))?\s*$/i;
+
+  function sinifImza(el) {
+    return (typeof el.className === 'string' ? el.className : '').trim().split(/\s+/)[0] || '';
+  }
+
+  var kartHavuzu = (function () {
+    var sayac = {}, ornek = {};
+    var tum = document.querySelectorAll('li,article,div,section');
+    for (var i = 0; i < tum.length; i++) {
+      var e = tum[i];
+      var c = sinifImza(e);
+      if (c.length < 3) continue;
+      var p = e.parentElement;
+      if (!p || p.children.length < 3) continue;   // kardeş grubu değil
+      sayac[c] = (sayac[c] || 0) + 1;
+      if (!ornek[c]) ornek[c] = e;
+    }
+    var havuz = {};
+    var ks = Object.keys(sayac);
+    for (var k = 0; k < ks.length; k++) {
+      var c2 = ks[k], n = sayac[c2];
+      if (n < 3 || n > 200) continue;              // tek öğe ya da menü yığını
+      var o = ornek[c2];
+      var mt = (o.innerText || '').trim();
+      if (mt.length > 0 && mt.length < 400 && PARA_RE.test(mt)) havuz[c2] = n;
+    }
+    return havuz;
+  })();
+
+  // Sayfa başına ölçülen eşikler (sabit sayı yok).
+  var TIPIK_KART_METIN = (function () {
+    var n = 0, toplam = 0;
+    var ks = Object.keys(kartHavuzu);
+    for (var i = 0; i < ks.length; i++) {
+      var o = document.querySelector('[class~="' + ks[i].replace(/"/g, '\\"') + '"]');
+      if (!o) continue;
+      var t = (o.innerText || '').trim();
+      if (t.length > 0) { toplam += t.length; n++; }
+    }
+    return n > 0 ? Math.round(toplam / n) : 0;
+  })();
+
+  function kart_icerik(el) {
+    var tag = (el.tagName || '').toLowerCase();
+
+    // (B-i) Form denetimleri asla ürün kartı değildir.
+    if (tag === 'input' || tag === 'select' || tag === 'textarea') return false;
+    if (el.getAttribute && (el.getAttribute('role') === 'checkbox' ||
+                            el.getAttribute('role') === 'radio')) return false;
+    var lab = el.closest ? el.closest('label') : null;
+    if (lab && lab.querySelector('input[type=checkbox],input[type=radio]')) return false;
+
+    // (B-ii) Fiyat ARALIĞI filtresi.
+    var kendi = (el.innerText || '').trim();
+    if (kendi && ARALIK_RE.test(kendi)) return false;
+
+    // (A) Kart kapsayıcısını bul: kendisi havuzdaysa kendisi, değilse
+    // en yakın havuz-üyesi ata (en fazla 4 seviye).
+    var kapsayici = null;
+    if (kartHavuzu[sinifImza(el)]) {
+      kapsayici = el;
+    } else if (el.closest) {
+      // Önce en yakın HAVUZ-ÜYESİ atayı ara (ikon/buton gibi havuz dışı
+      // çocuklar kartın içinde olabilir: metinsiz sepete-ekle SVG'si).
+      var ph = el.parentElement;
+      for (var dh = 0; dh < 6 && ph; dh++, ph = ph.parentElement) {
+        if (kartHavuzu[sinifImza(ph)]) { kapsayici = ph; break; }
+      }
+    }
+    // (A-yedek) Havuz boşsa (tek kartlı sayfa) veya havuz isabeti yoksa:
+    // fiyat sinyali taşıyan EN YAKIN ata kart kabul edilir. Böylece yapısal
+    // tekrar gerektirmeyen tek ürünlü sayfalar da doğru çalışır.
+    if (!kapsayici && el.closest) {
+      var pf = el.parentElement;
+      for (var df = 0; df < 6 && pf && pf !== document.body; df++, pf = pf.parentElement) {
+        var tf = pf.innerText || '';
+        var kf = pf.querySelectorAll ? pf.querySelectorAll('a,button,input,select,textarea').length : 0;
+        if (tf.length >= 8 && tf.length <= 420 && kf <= 6 && PARA_RE.test(tf)) {
+          kapsayici = pf;
+          break;
+        }
+      }
+    }
+    if (!kapsayici) {
+      var p = el.parentElement;
+      for (var d = 0; d < 4 && p; d++, p = p.parentElement) {
+        if (kartHavuzu[sinifImza(p)]) { kapsayici = p; break; }
+      }
+      if (!kapsayici && el.closest) {
+        var li = el.closest('li,article');
+        if (li && kartHavuzu[sinifImza(li)]) kapsayici = li;
+      }
+    }
+    if (!kapsayici) return false;
+
+    var metin = (kapsayici.innerText || '').trim();
+    // (B-iii) Fiyat taşımalı, etiket uzunluğunda olmamalı.
+    if (!metin || metin.length < 8 || metin.length > 400) return false;
+    if (!PARA_RE.test(metin)) return false;
+
+    // (C) Link yoğunluğu: link yoksa kart değil; her çocuk link ise menü.
+    var linkSayi = kapsayici.querySelectorAll ? kapsayici.querySelectorAll('a[href]').length : 0;
+    if (linkSayi === 0) return false;
+    var cocukSayi = kapsayici.children ? kapsayici.children.length : 0;
+    if (cocukSayi >= 3 && linkSayi >= cocukSayi) return false;
+
+    return true;
+  }
+
+  // Sıralama/filtre denetimi — ALGORİTMİK
+  // Denetim = kendi başına işlev gören, LİSTE ÖĞESİ OLMAYAN form kontrolü.
+  //   (1) gerçek form denetimi (select / combobox / aria-haspopup / button)
+  //       — <a href> navigasyondur, denetim değil
+  //   (2) kart havuzu içinde olmamalı (ürün kartındaki düğme denetim değil)
+  //   (3) metni kart metninin yarısından kısa olmalı (eşik sayfa başına)
   function kontrol_oncelik(el) {
     var tag = (el.tagName || '').toLowerCase();
     if (tag === 'a') return false;
 
     var rol = el.getAttribute('role') || '';
     var popup = el.getAttribute('aria-haspopup');
-    if (tag === 'select' || rol === 'combobox' || popup) return true;
+    var tip = (el.getAttribute('type') || '').toLowerCase();
+    var formDenetimi = (tag === 'select') || rol === 'combobox' || popup ||
+                       (tag === 'button' && tip === 'button') ||
+                       rol === 'listbox' || rol === 'menu';
+    if (!formDenetimi) return false;
+
+    var ata = el.parentElement;
+    for (var d = 0; d < 4 && ata; d++, ata = ata.parentElement) {
+      if (kartHavuzu[sinifImza(ata)]) return false;   // kart içi düğme
+    }
 
     var metin = (el.innerText || '').trim();
-    if (metin.length > 40) return false; // uzun metin = liste öğesi, kontrol değil
-    var ad = ((el.getAttribute('aria-label') || '') + ' ' +
-              (typeof el.className === 'string' ? el.className : '') + ' ' +
-              metin).toLowerCase();
-    return /s[ıi]rala|sort|filtre|filter/.test(ad);
-  }
-
-  // Ürün kartı mı? Siteye özgü sınıf adları güvenilmez; üç bağımsız sinyal:
-  //   1) bilinen liste kapsayıcısı (productList/data-asin)
-  //   2) ürün-benzeri href (/urun/, /dp/, -p-)
-  //   3) FIYAT DESENİ — kart metninde fiyat VE ürün kartı işareti
-  // Vatan Bilgisayar ölçümü: arama sayfasında 229 etkileşimli öğe var, ilk 40
-  // slotu sol filtre paneli dolduruyordu. Salt fiyat deseni yetmedi: sol
-  // paneldeki "200 - 499TL (15)" gibi FİYAT ARALIĞI FİLTRE linkleri de
-  // eşleşiyordu. Bu yüzden fiyat + şu ek koşullar aranır:
-  //   - element bir <a> ise metni fiyat aralığı/filtre kalıbı OLMAMALI
-  //   - kart içinde fiyat ve ürün adı benzeri uzun metin bulunmalı
-  var FIYAT_RE = /\d[\d.,]*\s*(?:TL|₺)\b|₺\s*\d/i;
-  // "200 - 499TL (15)", "500 - 999 TL (58)" → filtre linki, ürün kartı değil
-  var FILTRE_FIYAT_RE = /^\s*\d[\d.,]*\s*[-–]\s*\d[\d.,]*\s*(?:TL|₺)?\s*\(\d+\)\s*$/i;
-
-  function kart_icerik(el) {
-    // Form denetimleri (checkbox/radio/select/input) ürün kartı DEĞİLDİR.
-    // Hepsiburada ölçümü: sol filtrenin fiyat aralığı checkbox'ları
-    // ("0-2800", "2800-14000") fiyat desenine uyduğu için ürün kartı sayılıp
-    // gerçek ürünleri dökümden itiyordu.
-    var tag = (el.tagName || '').toLowerCase();
-    if (tag === 'input' || tag === 'select' || tag === 'textarea') return false;
-    if (el.getAttribute && el.getAttribute('role') === 'checkbox') return false;
-    // Bir <label> içindeki checkbox'ı saran link de filtre sayılır.
-    if (el.closest && el.closest('label') && el.closest('label').querySelector(':scope > input[type=checkbox],:scope > input[type=radio]')) return false;
-
-    if (el.closest('[class*="productList" i],[data-asin]')) return true;
-    var c = el.closest('li,article,div');
-    if (!c || !c.querySelector) return false;
-    if (c.querySelector('a[href*="/urun/"],a[href*="/dp/"],a[href*="-p-"]')) return true;
-
-    var metin = (c.innerText || '').trim();
-    if (metin.length === 0 || metin.length > 300) return false;
-    if (!FIYAT_RE.test(metin)) return false;
-
-    // Bağlantıysa: fiyat aralığı filtresi linklerini ele.
-    if ((el.tagName || '').toLowerCase() === 'a') {
-      var kendi = (el.innerText || '').trim();
-      if (FILTRE_FIYAT_RE.test(kendi)) return false;
-      // "(15)" gibi adet eki taşıyan linkler kategori/marka filtresidir.
-      if (/\(\d+\)\s*$/.test(kendi) && !/TL|₺/i.test(kendi)) return false;
+    // Metinsiz buton (yalnızca ikon) denetim DEĞİLDİR: model onu tanımlayamaz,
+    // slotu boşa harcar. liste-sayfası ölçümü: e3..e8 metinsiz <button> idi ve
+    // ürün kartlarının önüne geçiyordu.
+    if (metin.length === 0) {
+      // Erişilebilirlik adı varsa (aria-label/title) hâlâ anlamlıdır.
+      var etiket = (el.getAttribute('aria-label') || el.getAttribute('title') || '').trim();
+      if (etiket.length === 0) return false;
     }
+    if (TIPIK_KART_METIN > 0 && metin.length > TIPIK_KART_METIN / 2) return false;
+
     return true;
   }
 
@@ -372,17 +515,104 @@ return (function (maxElements) {
   //  satın alma tamamlanamaz; sıralama/filtre olmadan liste yönetilemez.
   //  Üçü de öneri kartlarından önce gelir.)
   //
-  // İSTİSNA (Hepsiburada ölçümü): liste sayfalarında çok sayıda FİLTRE alanı
+  // İSTİSNA (liste-sayfası ölçümü): liste sayfalarında çok sayıda FİLTRE alanı
   // ("Filtrele", "En az", "En çok" × onlarca) bulunur; hepsi "form alanı"
   // olunca 40 slotu doldurup ürünleri dışarıda bırakıyordu. Bu yüzden form
   // alanlarından yalnızca ilk EN FAZLA 3 tanesi öne alınır (site başına arama
   // kutusu + sıralama genelde 1-3 tanedir), gerisi ürün kartlarından SONRA
   // listelenir.
-  const ONCELIKLI_GIRIS = 3;
+  // Sabit sayı yerine sayfa başına ölçüm:
+  //   - ÜRÜN KARTI VARSA (liste sayfası): metin alanlarından en fazla 2'si
+  //     öne alınır (arama + sıralama); kalan onlarca filtre alanı ürün
+  //     kartlarından SONRA listelenir.
+  //   - ÜRÜN KARTI YOKSA (form/detay sayfası): tüm giriş alanları öne alınır.
+  var kartVar = false;
+  for (var ci = 0; ci < toplanan.length; ci++) {
+    if (kart_icerik(toplanan[ci].el)) { kartVar = true; break; }
+  }
   var girisler = toplanan.filter(function (p) { return giris_alani(p.el); });
-  var oncelikli_giris = girisler.slice(0, ONCELIKLI_GIRIS);
-  var kalan_giris = girisler.slice(ONCELIKLI_GIRIS);
-  var secilen = oncelikli_giris.slice();
+
+  // Arama kutusu HER ZAMAN ilk sırada olmalı: model onu görmezse görevin ilk
+  // adımı ölür. e-ticaret anasayfası ölçümü: 40 slotu ürün kartları doldurup
+  // arama kutusu dump'a hiç girmiyordu. Sinyal: type=search ya da
+  // placeholder/aria-label/name'de ara|search|sorgu geçmesi.
+  function aramaKutusu(el) {
+    var tip = (el.getAttribute('type') || '').toLowerCase();
+    if (tip === 'search') return true;
+    var ad = ((el.getAttribute('placeholder') || '') + ' ' +
+              (el.getAttribute('aria-label') || '') + ' ' +
+              (el.getAttribute('name') || '') + ' ' +
+              (el.getAttribute('id') || '') + ' ' +
+              (el.getAttribute('role') || '')).toLowerCase();
+    return /(^|[^a-z])(ara|arama|search|sorgu|query)([^a-z]|$)/.test(ad);
+  }
+  // Arama kutusu bir <input> olmak zorunda değil: modern siteler aramayı
+  // <button>/<div role=combobox> olarak render edip tıklanınca input açıyor.
+  // e-ticaret anasayfası ölçümü: görünür input YOK; arama
+  // button.suggestion-placeholder ("Ürün, kategori veya marka ara") idi ve
+  // 40 slotu ürün kartları doldurduğu için dump'a hiç girmiyordu.
+  // Bu yüzden arama sinyali taşıyan TÜM öğeler (input olmayanlar dahil)
+  // öncelikli gruba alınır.
+  function aramaSinyali(el) {
+    if (aramaKutusu(el)) return true;
+    var tag = (el.tagName || '').toLowerCase();
+    if (tag !== 'button' && tag !== 'div' && tag !== 'a' && tag !== 'span' && tag !== 'input') return false;
+    // Sinyal kaynakları DİKKATLİ seçilir: href'e BAKILMAZ.
+    // SPA anasayfası ölçümü: kampanya banner linkleri "/arama?promotions=..."
+    // href'i taşıdığı için arama kutusu sanılıyor, ilk 6 slotu doldurup asıl
+    // arama kutusunu dump'tan itiyordu. Arama kutusu, href'inden değil
+    // GÖRÜNEN ETİKETİNDEN / erişilebilirlik adından tanınır.
+    var metin = (el.innerText || '').trim().replace(/\s+/g, ' ');
+    var ad = ((el.getAttribute('aria-label') || '') + ' ' +
+              (el.getAttribute('placeholder') || '') + ' ' +
+              (el.getAttribute('title') || '') + ' ' +
+              (el.getAttribute('role') || '') + ' ' +
+              metin + ' ' +
+              (typeof el.className === 'string' ? el.className : '')).toLowerCase();
+    // Yapısal sinyal: sayfada TEK metin alanı varsa o kesinlikle arama/giriş
+    // kutusudur — etiketi ne olursa olsun. SPA ölçümü: tek görünür input,
+    // placeholder'ı dinamik ürün önerisi ("Philips Hue GO , 3851 TL"),
+    // sınıf/id/form yok; hiçbir metin sinyali vermiyordu.
+    if (el.tagName === 'INPUT' && TEK_METIN_ALANI === el) return true;
+    // Yapısal sinyal: bir <form> içindeki ilk metin alanı, etiketi ne olursa
+    // olsun arama/giriş kutusudur. SPA ölçümü: arama kutusunun placeholder'ı
+    // dinamik ürün önerisi taşıyordu ("Philips Hue GO , 3851 TL") ve hiçbir
+    // metin sinyali vermiyordu; kategori linkleri ilk 10 slotu dolduruyordu.
+    if (el.form && el.tagName === 'INPUT') {
+      var ilkFormAlani = el.form.querySelector('input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=submit])');
+      if (ilkFormAlani === el) return true;
+    }
+    if (!/(ara|arama|search|sorgu|query)/.test(ad)) return false;
+    // "Ürün ara" gibi KISA bir etiket olmalı; kampanya sloganı değil.
+    if (metin.length > 40) return false;
+    // Link metni tamamen rakam/boş ise (ör. "/arama?promotions=") arama değil.
+    if (!/[a-zçğıöşü]{3,}/i.test(metin) && !/ara|search/i.test(
+          (el.getAttribute('aria-label') || '') + (el.getAttribute('placeholder') || ''))) return false;
+    return true;
+  }
+  // Sayfadaki görünür metin alanları (tek ise arama kutusu odur).
+  var metinAlanlari = toplanan.filter(function (p) {
+    return (p.el.tagName || '').toUpperCase() === 'INPUT' && giris_alani(p.el);
+  });
+  var TEK_METIN_ALANI = metinAlanlari.length === 1 ? metinAlanlari[0].el : null;
+
+  var aramaOgeleri = toplanan.filter(function (p) { return aramaSinyali(p.el); });
+  var aramalar = girisler.filter(function (p) { return aramaKutusu(p.el); });
+  var digerGirisler = girisler.filter(function (p) { return !aramaKutusu(p.el); });
+
+  var oncelikli_giris, kalan_giris;
+  if (kartVar) {
+    // Arama kutusu(ları) + en fazla 1 sıralama alanı öne; kalan filtreler sonra.
+    oncelikli_giris = aramalar.slice(0, 2).concat(digerGirisler.slice(0, 1));
+    kalan_giris = digerGirisler.slice(1);
+  } else {
+    oncelikli_giris = girisler;
+    kalan_giris = [];
+  }
+  // Arama sinyali taşıyan öğeler listenin EN BAŞINA (input olsun olmasın).
+  var secilen = [];
+  aramaOgeleri.forEach(function (p) { if (secilen.indexOf(p) < 0) secilen.push(p); });
+  oncelikli_giris.forEach(function (p) { if (secilen.indexOf(p) < 0) secilen.push(p); });
   var kalan = toplanan.filter(function (p) { return !giris_alani(p.el); });
   var kontroller = kalan.filter(function (p) { return kontrol_oncelik(p.el); });
   var kalan2 = kalan.filter(function (p) { return !kontrol_oncelik(p.el); });

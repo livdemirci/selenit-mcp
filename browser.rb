@@ -397,7 +397,7 @@ class SelenitBrowser
       girdi: document.querySelectorAll("input,textarea,select").length,
       // Modal tespiti snapshot.js ile AYNI ölçütü kullanmalı: element görünür
       // olmalı VE ekran merkezini kapsamalı. Eski hâli yalnızca "DOM'da
-      // modal/dialog class'lı bir şey var mı" diye bakıyordu; Trendyol'da
+      // modal/dialog class'lı bir şey var mı" diye bakıyordu; bir e-ticaret sitesinde
       // gizli bir modal class'lı element yüzünden modal:true dönüyor ve model
       // "MODAL AÇIK" sanıp yanlış strateji kuruyordu (ölçüldü: gerçek aday
       // cookie-setting-link, 474x40px, merkezi kapsamıyor).
@@ -555,11 +555,11 @@ class SelenitBrowser
       element.send_keys(text.to_s)
       element.send_keys(:enter) if submit
       # JS tabanlı aramalar (form yok, keydown dinleyicisi yok): Enter hiçbir
-      # şey yapmaz. n11.com'da ölçüldü — form yok, arama ikonu `I.new-search-icon`
+      # şey yapmaz. SPA aramasında ölçüldü — form yok, arama ikonu `I.new-search-icon`
       # input'un kardeşi. Enter denendikten sonra URL değişmediyse ve input
       # içindeysek, en yakın submit-benzeri kontrolü tıkla.
       #
-      # n11 ÖLÇÜMÜ (regresyon): Enter URL'yi DEĞİŞTİRİYOR ama yanlış yere
+      # REGRESYON ÖLÇÜMÜ: Enter URL'yi DEĞİŞTİRİYOR ama yanlış yere
       # götürüyor — arama kutusunun placeholder'ı dinamik bir ürün önerisi
       # taşıyor ("Philips Hue GO , 3851 TL"), otomatik tamamlama o öneriyi
       # seçiyor ve /urun/... açılıyor. Eski kod "URL değişti = başarı" sayıp
@@ -576,7 +576,9 @@ class SelenitBrowser
           # 1) form / submit ikonu
           cozuldu = false
           if (submit_click = js_submit_click(element))
-            sleep 0.4
+            # Koşulsuz sleep yerine explicit wait: URL DEĞİŞENE kadar bekle
+            # (Zhan: hazır olma koşulunu ölç, süre tahmin etme).
+            wait_until(timeout: 2.0) { driver.current_url.to_s != url_before_type.to_s }
             cozuldu = driver.current_url != url_before_type && arama_sonucu_sayfasi?(text)
           end
           # 2) hâlâ değişmediyse: URL şemasıyla arama (JS event yutuluyorsa)
@@ -589,7 +591,7 @@ class SelenitBrowser
     rescue Selenium::WebDriver::Error::StaleElementReferenceError
       # Otomatik tamamlama/arama kutusu DOM'u yenileyebilir; öğeyi yeniden
       # çözüp yazmayı bir kez tekrarla.
-      # Hepsiburada ölçümü: örtü açılırken DOM yenileniyor ve Selenium
+      # liste-sayfası ölçümü: örtü açılırken DOM yenileniyor ve Selenium
       # "stale element reference" atıyor. Ama işlem çoğu zaman BAŞARILI
       # oluyor (URL /ara?q=... değişmiş) — bu durumda hatayı yut, modele
       # yanlış "HATA" gösterme.
@@ -603,7 +605,7 @@ class SelenitBrowser
       element = yeniden_coz(ref, selector)
       retry
     rescue Selenium::WebDriver::Error::ElementNotInteractableError
-      # Hepsiburada ölçümü: arama input'u görünür (rect 418x52, display
+      # liste-sayfası ölçümü: arama input'u görünür (rect 418x52, display
       # inline-block) ama pointerEvents:none; merkezinde overlay açan bir DIV
       # var. O DIV'e tıklamak input'u tıklanabilir yapıyor — ama tıklama DOM'u
       # yenilediği için ESKİ ELEMENT REFERANSI GEÇERSİZ oluyor (ölçüldü:
@@ -613,7 +615,14 @@ class SelenitBrowser
 
       attempts += 1
       if type_click_ac(element)
-        sleep 0.3
+        # Koşulsuz sleep yerine koşul: alan yeniden çözülebilir hale gelene kadar bekle.
+        wait_until(timeout: 1.5) do
+          begin
+            selector.to_s.empty? ? !!resolve(ref, nil, nil, wait: :visible) : !!resolve(nil, selector, nil, wait: :visible)
+          rescue StandardError
+            false
+          end
+        end
         begin
           element = selector.to_s.empty? ? resolve(ref, nil, nil, wait: :visible) : resolve(nil, selector, nil, wait: :visible)
         rescue StandardError
@@ -623,7 +632,7 @@ class SelenitBrowser
       js_yaz(element, text)
       @js_type_used = true
       @son_yazma_notu = " (not: öğe tıklanamaz durumdaydı — pointer-events:none; JS ile yazıldı)"
-      # Örtü açıldıysa artık gerçek Enter gönderilebilir: Hepsiburada ölçümü
+      # Örtü açıldıysa artık gerçek Enter gönderilebilir: liste-sayfası ölçümü
       # (tıkla → yaz → Enter) /ara?q=kalem sonucunu veriyor. Bu yol URL
       # şeması tahmininden daha güvenilir, önce onu dene.
       unless submit
@@ -731,7 +740,7 @@ class SelenitBrowser
     body = driver.find_element(:tag_name, "body")
     text = body.text.to_s.gsub(/[ \t]+/, " ").gsub(/\n{3,}/, "\n\n").strip
     # Ürün listesi en değerli içerik: model arama sonuçlarını arıyorsa onu ver.
-    # Hepsiburada ölçümü: [class*="productList"] 8.509 karakterlik gerçek ürün
+    # liste-sayfası ölçümü: [class*="productList"] 8.509 karakterlik gerçek ürün
     # listesi; body.innerText ise header menüsüyle başlayıp max bütçesini
     # tüketiyordu.
     ana = begin
@@ -976,7 +985,7 @@ class SelenitBrowser
   # React/Vue kontrollü input'lar value setter'ı doğrudan atamayı görmez;
   # prototype setter'ı üzerinden yazıp input+change olaylarını yayınlamak gerekir.
   #
-  # Hepsiburada ölçümü: input önce pointer-events:none ve merkezinde bir DIV
+  # liste-sayfası ölçümü: input önce pointer-events:none ve merkezinde bir DIV
   # var (arama overlay'ini açan katman). O DIV'e tıklamak input'u
   # pointer-events:auto yapıyor ve merkeze input geçiyor — yani "önce aç,
   # sonra yaz". Bu yüzden yazmadan önce örtüyü açmayı dene.
@@ -1015,24 +1024,47 @@ class SelenitBrowser
     nil
   end
 
-  # SPA/asenkron render oturması: body hazır olsa da header, arama kutusu ve
-  # nav JS ile sonradan gelir. n11.com ölçümü: navigate dump'ı arama kutusunu
-  # KAÇIRIYOR, 1 sn sonraki snapshot görüyor. Sabit sleep yerine etkileşimli
-  # öğe sayısının iki ölçüm arasında stabil kalmasını bekle.
-  # Bütçe: en fazla SETTLE_MS kadar; sayfa zaten stabilsen ~0 ek maliyet.
+  # SPA/asenkron render oturması.
+  #
+  # ÖNCEKİ YAKLAŞIM YANLIŞTI (Zhimin Zhan'ın "auto-waiting is wrong" eleştirisi
+  # tam olarak bunu anlatır): etkileşimli öğe SAYISININ iki ölçümde aynı
+  # kalmasını bekliyordu. Üç kusuru vardı:
+  #   1) `sabit >= 2` sayacı döngü başında artırılıp hemen break ediyordu,
+  #      yani "iki ardışık ölçüm" hiç yapılmıyordu — sahte stabilite.
+  #   2) `simdi > 0` koşulu 0→N geçişini "değişmedi" sayabiliyordu.
+  #   3) Sayı sabit kalırken İÇERİK tamamen değişebilir (skeleton → gerçek
+  #      içerik aynı öğe sayısıyla gelir). Sayı stabilitesi ≠ hazır olma.
+  #
+  # DOĞRU YAKLAŞIM (explicit wait, koşula bağlı): hazır olma KOŞULUNU ölç.
+  # Sayfa "hazır" = (a) DOM hazır, (b) en az bir etkileşimli öğe görünür,
+  # (c) iki ardışık ölçümde DOM İMZASI (düğüm sayısı + metin uzunluğu)
+  # değişmiyor. İmza sayıdan daha güçlüdür: içerik değişirse imza değişir.
+  # Bütçe biterse de döner (asla bloklamaz) — çağıran karar verir.
   SETTLE_MS = 900
   SETTLE_STEP = 0.15
 
+  DOM_IMZA_JS = <<~JS
+    (function () {
+      var els = document.querySelectorAll('a[href],button,input,textarea,select');
+      var metin = (document.body && document.body.innerText) ? document.body.innerText.length : 0;
+      var gorunur = 0;
+      for (var i = 0; i < els.length; i++) {
+        var r = els[i].getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) gorunur++;
+      }
+      return document.getElementsByTagName('*').length + ':' + metin + ':' + gorunur;
+    })();
+  JS
+
   def settle_interactive
-    onceki = -1
+    onceki = nil
     sabit = 0
     bekle = 0.0
-    script = "return document.querySelectorAll('a[href],button,input,textarea,select').length"
     while bekle < SETTLE_MS / 1000.0
-      simdi = driver.execute_script(script).to_i
-      if simdi == onceki && simdi > 0
+      simdi = driver.execute_script(DOM_IMZA_JS).to_s
+      if onceki && simdi == onceki
         sabit += 1
-        break if sabit >= 2 # iki ardışık ölçüm aynı → oturdu
+        break if sabit >= 2 # iki ARDIŞIK ölçüm gerçekten aynı
       else
         sabit = 0
       end
@@ -1072,7 +1104,7 @@ class SelenitBrowser
   end
 
   # Son çare: arama alanını URL şemasıyla doldur.
-  # n11.com ölçümü: form yok, buton yok, öneri listesi yok; Enter ve native
+  # SPA.com ölçümü: form yok, buton yok, öneri listesi yok; Enter ve native
   # KeyboardEvent yutuluyor (site Selenium üretimi event'leri kabul etmiyor).
   # Ama /arama?q=<terim> doğrudan çalışıyor (52 ürün, doğru başlık).
   # Genel kural: submit denendikten sonra URL değişmediyse, kök alan adına
@@ -1099,7 +1131,7 @@ class SelenitBrowser
         next if driver.current_url == onceki_url
         # Soft-404 / yanlış şema kontrolü: URL değişip sayfa dolu olsa bile
         # 404 ya da anasayfaya düşmüş olabilir.
-        # Hepsiburada ölçümü: /arama?q=kalem 404 (21 kategori linki var),
+        # liste-sayfası ölçümü: /arama?q=kalem 404 (21 kategori linki var),
         # /?s=kalem ise anasayfaya düşüyor (124 ürün linki var!) — iki durumda
         # da "URL değişti + sayfa dolu" kontrolü yanlış pozitif veriyordu.
         # Gerçek ölçüt: hata sayfası DEĞİL ve arama terimi sayfada görünüyor.
@@ -1115,7 +1147,7 @@ class SelenitBrowser
 
   # Arama sonucu sayfası mı? URL'de arama işareti VEYA sayfada sonuç listesi.
   # Amaç: Enter'ın otomatik tamamlama önerisine gidip /urun/... açmasını
-  # "başarı" saymamak (n11 ölçümü: 3/3 aynı hata).
+  # "başarı" saymamak (SPA ölçümü: 3/3 aynı hata).
   def arama_sonucu_sayfasi?(text)
     url = driver.current_url.to_s
     # Ürün detay sayfası asla arama sonucu değildir.
@@ -1556,7 +1588,7 @@ class SelenitBrowser
   # birkaç saniye içinde DOM'dan silinir, modelin sonraki snapshot'ı onu
   # göremeyebilir. Bu yüzden eylemden hemen sonra açık bir beklemeyle
   # toplanıp çıktıya eklenir ("toast hata: Ürün geçici olarak temin
-  # edilemiyor"). Hepsiburada vb. siteler toast'lara role vermez
+  # edilemiyor"). liste sitesi vb. siteler toast'lara role vermez
   # (hb-toast-notifier-*), o yüzden kaba sınıf taraması da yapılır.
   TOAST_JS = <<~JS
     var out = [];

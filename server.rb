@@ -36,6 +36,24 @@ STDIN.set_encoding("UTF-8")
 STDIN.sync = true
 
 module Tools
+  # --minimal: küçük yerel modeller (Gemma 4 E4B, Qwen 4B, MiniCPM) 23 araçlık
+  # şemayla ilk turda BOŞ cevap veriyor (ölçüm: n11 görevinde 10 adımın
+  # hiçbirinde araç çağrısı yok). Araç sayısı 7'ye indirilince çağrı başlıyor.
+  # Ölçüt "site" değil "model yeteneği": şema bütçesi dar olan her model için.
+  MINIMAL_ADLAR = %w[
+    browser_navigate browser_snapshot browser_type browser_click
+    browser_read browser_scroll browser_wait_for
+  ].freeze
+
+  def self.minimal?
+    ENV["SELENIT_MINIMAL"].to_s == "1" || ARGV.include?("--minimal")
+  end
+
+  def self.liste
+    return LIST unless minimal?
+    LIST.select { |t| MINIMAL_ADLAR.include?(t[:name]) }
+  end
+
   LIST = [
     {
       name: "browser_navigate",
@@ -429,7 +447,7 @@ def handle(request)
   when "ping"
     respond(id, {})
   when "tools/list"
-    respond(id, { tools: Tools::LIST })
+    respond(id, { tools: Tools.liste })
   when "tools/call"
     name = params["name"].to_s
     args = params["arguments"] || {}
