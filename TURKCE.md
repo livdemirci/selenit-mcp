@@ -761,6 +761,43 @@ Sonuç (Gemma 4 E4B, thinking kapalı): n11 53 sn / Trendyol 36 sn /
 Hepsiburada 64 sn / Wikipedia 37 sn / HN 20 sn — **5/5 geçti**.
 Smoke regresyon: **32/32**.
 
+### 10. tur: liste sayfası döküm önceliği — 4 sınıf kusur (Vatan + 3 site regresyonu)
+
+`selenit-mcp` vs Playwright MCP karşılaştırmasında selenit/cloud 3/5'te kalınca
+kök neden araştırıldı. Vatan Bilgisayar arama sayfası (229 etkileşimli öğe)
+üzerinden dört ayrı hata bulundu; hepsi **siteye özgü değil, sınıf düzeyinde**:
+
+1. **`kontrol_oncelik` çok genişti.** "sırala/filtre" metni veya `aria-haspopup`
+   taşıyan her öğe denetim sayılıyordu → 229 öğenin **69'u** kontrol sınıfına
+   düştü (marka/kategori linkleri dahil), ilk 40 slotu onlar doldurdu ve ilk
+   40'ta **0 ürün kartı** kaldı. Düzeltme: `<a>` asla kontrol sayılmaz; yalnızca
+   `select`/`role=combobox`/`aria-haspopup` ya da **40 karakterden kısa**
+   sırala/filtre düğmeleri.
+
+2. **Fiyat deseni filtreleri ürün sanıyordu.** `kart_icerik`'e eklenen fiyat
+   sezgiseli ("299 TL") sol paneldeki **"200 - 499TL (15)"** fiyat aralığı
+   linklerine ve **"0-2800" fiyat checkbox'larına** da uyuyordu. Düzeltme:
+   `FILTRE_FIYAT_RE` ile aralık linkleri elenir; `input`/`select`/`textarea`
+   ve checkbox saran `label`'lar hiç kart sayılmaz.
+
+3. **`giris_alani` tüm `<input>`'ları kapsıyordu.** Hepsiburada'da sol filtrenin
+   marka checkbox'ları (rotring, fabercastell, …) "giriş alanı" sayılıp ilk
+   sıraları aldı. Düzeltme: yalnızca **metin benzeri** tipler (text/search/
+   email/tel/url/number/password). Ayrıca form alanlarından yalnızca ilk
+   **3**'ü öne alınır; kalan onlarca filtre alanı ürün kartlarından sonra
+   listelenir (sayfa başına arama kutusu + sıralama genelde 1-3 tanedir).
+
+4. **"URL değişti = başarı" yanlış varsayımı (n11 regresyonu).** n11 arama
+   kutusunun `placeholder`'ı dinamik bir ürün önerisi taşıyor
+   ("Philips Hue GO , 3851 TL"); Enter otomatik tamamlamayı seçip `/urun/...`
+   açıyordu ve kod bunu başarı sayıyordu (3/3 tekrarda aynı). Düzeltme:
+   `arama_sonucu_sayfasi?` — `/urun|product|dp|p/` içeren URL asla arama sonucu
+   değildir; URL arama işareti taşımıyorsa terimin sayfada görünmesi de aranır.
+
+Doğrulama (canlı, 4 site): n11 `/arama?q=`, Trendyol `/sr?q=`,
+Hepsiburada `/ara?q=`, Vatan `/arama/` — **4/4 geçti**, her birinde ürün
+fiyatları dökümde. Smoke **38/38**.
+
 ## Gemma E4B için ipuçları
 
 - Modelden **tek adım** isteyin: `browser_navigate` → `browser_snapshot` → `browser_click`.

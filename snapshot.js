@@ -250,9 +250,20 @@ return (function (maxElements) {
   // Arama kutusu bir sitenin en kritik kontrolüdür; model onu göremezse görev
   // ilk adımda ölür. Bu yüzden form alanları (input/textarea/select) her zaman
   // ürün kartlarından ÖNCE gelir.
+  // Metin girişi alanı mı? (Arama kutusu, form alanı — görevin başlaması için şart.)
+  // Hepsiburada ölçümü: buradaki tanım <input> etiketinin TAMAMINI kapsıyordu,
+  // dolayısıyla sol filtrenin marka checkbox'ları (rotring, fabercastell, …)
+  // "giriş alanı" sayılıp ilk sıraları alıyor ve ürünler döküme hiç girmiyordu.
+  // Artık yalnızca metin benzeri alanlar giriş sayılır.
+  var METIN_TIPLERI = { text: 1, search: 1, email: 1, tel: 1, url: 1, number: 1, password: 1, '': 1 };
+
   function giris_alani(el) {
     var t = (el.tagName || '').toLowerCase();
-    return t === 'input' || t === 'textarea' || t === 'select';
+    if (t === 'textarea') return true;
+    if (t === 'select') return true;
+    if (t !== 'input') return false;
+    var tip = (el.getAttribute('type') || '').toLowerCase();
+    return !!METIN_TIPLERI[tip];
   }
 
   // Birincil eylem düğmeleri: "Sepete Ekle", "Satın Al", "Kaydet", "Gönder".
@@ -280,23 +291,72 @@ return (function (maxElements) {
   // Sıralama/filtre kontrolleri: büyük listelerde MAX bütçesi ürün kartlarına
   // gidince "Önerilen Sıralama" gibi düğmeler dökümde hiç görünmüyordu.
   // Combobox/dropdown ve metninde sırala/filtre geçen denetimler öne alınır.
+  //
+  // AMA: bu sezgisel çok geniş olursa liste sayfasının TAMAMI kontrol sayılır.
+  // Vatan Bilgisayar ölçümü: 229 öğenin 69'u "kontrol" sınıfına düşüyordu
+  // (marka/kategori linkleri de eşleşiyor), ilk 40 slotu onlar doldurup
+  // ürünler hiç sıra alamıyordu (ilk 40'ta 0 ürün kartı). Bu yüzden:
+  //   - yalnızca GERÇEK form denetimleri (<select>, role=combobox, [aria-haspopup])
+  //     ya da kısa metinli (< 40 karakter) sırala/filtre düğmeleri sayılır;
+  //   - <a href> bağlantıları asla kontrol sayılmaz (onlar navigasyondur).
   function kontrol_oncelik(el) {
+    var tag = (el.tagName || '').toLowerCase();
+    if (tag === 'a') return false;
+
+    var rol = el.getAttribute('role') || '';
+    var popup = el.getAttribute('aria-haspopup');
+    if (tag === 'select' || rol === 'combobox' || popup) return true;
+
+    var metin = (el.innerText || '').trim();
+    if (metin.length > 40) return false; // uzun metin = liste öğesi, kontrol değil
     var ad = ((el.getAttribute('aria-label') || '') + ' ' +
               (typeof el.className === 'string' ? el.className : '') + ' ' +
-              (el.innerText || '')).toLowerCase();
-    if (/s[ıi]rala|sort|filtre|filter/.test(ad)) return true;
-    var rol = el.getAttribute('role') || '';
-    return !!(el.getAttribute('aria-haspopup') || rol === 'combobox');
+              metin).toLowerCase();
+    return /s[ıi]rala|sort|filtre|filter/.test(ad);
   }
 
+  // Ürün kartı mı? Siteye özgü sınıf adları güvenilmez; üç bağımsız sinyal:
+  //   1) bilinen liste kapsayıcısı (productList/data-asin)
+  //   2) ürün-benzeri href (/urun/, /dp/, -p-)
+  //   3) FIYAT DESENİ — kart metninde fiyat VE ürün kartı işareti
+  // Vatan Bilgisayar ölçümü: arama sayfasında 229 etkileşimli öğe var, ilk 40
+  // slotu sol filtre paneli dolduruyordu. Salt fiyat deseni yetmedi: sol
+  // paneldeki "200 - 499TL (15)" gibi FİYAT ARALIĞI FİLTRE linkleri de
+  // eşleşiyordu. Bu yüzden fiyat + şu ek koşullar aranır:
+  //   - element bir <a> ise metni fiyat aralığı/filtre kalıbı OLMAMALI
+  //   - kart içinde fiyat ve ürün adı benzeri uzun metin bulunmalı
+  var FIYAT_RE = /\d[\d.,]*\s*(?:TL|₺)\b|₺\s*\d/i;
+  // "200 - 499TL (15)", "500 - 999 TL (58)" → filtre linki, ürün kartı değil
+  var FILTRE_FIYAT_RE = /^\s*\d[\d.,]*\s*[-–]\s*\d[\d.,]*\s*(?:TL|₺)?\s*\(\d+\)\s*$/i;
+
   function kart_icerik(el) {
+    // Form denetimleri (checkbox/radio/select/input) ürün kartı DEĞİLDİR.
+    // Hepsiburada ölçümü: sol filtrenin fiyat aralığı checkbox'ları
+    // ("0-2800", "2800-14000") fiyat desenine uyduğu için ürün kartı sayılıp
+    // gerçek ürünleri dökümden itiyordu.
+    var tag = (el.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'select' || tag === 'textarea') return false;
+    if (el.getAttribute && el.getAttribute('role') === 'checkbox') return false;
+    // Bir <label> içindeki checkbox'ı saran link de filtre sayılır.
+    if (el.closest && el.closest('label') && el.closest('label').querySelector(':scope > input[type=checkbox],:scope > input[type=radio]')) return false;
+
     if (el.closest('[class*="productList" i],[data-asin]')) return true;
     var c = el.closest('li,article,div');
-    if (c && c.querySelector &&
-        c.querySelector('a[href*="/urun/"],a[href*="/dp/"],a[href*="-p-"]')) {
-      return true;
+    if (!c || !c.querySelector) return false;
+    if (c.querySelector('a[href*="/urun/"],a[href*="/dp/"],a[href*="-p-"]')) return true;
+
+    var metin = (c.innerText || '').trim();
+    if (metin.length === 0 || metin.length > 300) return false;
+    if (!FIYAT_RE.test(metin)) return false;
+
+    // Bağlantıysa: fiyat aralığı filtresi linklerini ele.
+    if ((el.tagName || '').toLowerCase() === 'a') {
+      var kendi = (el.innerText || '').trim();
+      if (FILTRE_FIYAT_RE.test(kendi)) return false;
+      // "(15)" gibi adet eki taşıyan linkler kategori/marka filtresidir.
+      if (/\(\d+\)\s*$/.test(kendi) && !/TL|₺/i.test(kendi)) return false;
     }
-    return false;
+    return true;
   }
 
   if (modal) {
@@ -311,7 +371,18 @@ return (function (maxElements) {
   // (Arama kutusu/select olmadan görev başlayamaz; "Sepete Ekle" olmadan
   //  satın alma tamamlanamaz; sıralama/filtre olmadan liste yönetilemez.
   //  Üçü de öneri kartlarından önce gelir.)
-  var secilen = toplanan.filter(function (p) { return giris_alani(p.el); });
+  //
+  // İSTİSNA (Hepsiburada ölçümü): liste sayfalarında çok sayıda FİLTRE alanı
+  // ("Filtrele", "En az", "En çok" × onlarca) bulunur; hepsi "form alanı"
+  // olunca 40 slotu doldurup ürünleri dışarıda bırakıyordu. Bu yüzden form
+  // alanlarından yalnızca ilk EN FAZLA 3 tanesi öne alınır (site başına arama
+  // kutusu + sıralama genelde 1-3 tanedir), gerisi ürün kartlarından SONRA
+  // listelenir.
+  const ONCELIKLI_GIRIS = 3;
+  var girisler = toplanan.filter(function (p) { return giris_alani(p.el); });
+  var oncelikli_giris = girisler.slice(0, ONCELIKLI_GIRIS);
+  var kalan_giris = girisler.slice(ONCELIKLI_GIRIS);
+  var secilen = oncelikli_giris.slice();
   var kalan = toplanan.filter(function (p) { return !giris_alani(p.el); });
   var kontroller = kalan.filter(function (p) { return kontrol_oncelik(p.el); });
   var kalan2 = kalan.filter(function (p) { return !kontrol_oncelik(p.el); });
@@ -322,7 +393,8 @@ return (function (maxElements) {
     birincil,
     digerleri.filter(function (p) { return overlay_index(p.el) !== -1; }),
     digerleri.filter(function (p) { return overlay_index(p.el) === -1 && kart_icerik(p.el); }),
-    digerleri.filter(function (p) { return overlay_index(p.el) === -1 && !kart_icerik(p.el); })
+    digerleri.filter(function (p) { return overlay_index(p.el) === -1 && !kart_icerik(p.el); }),
+    kalan_giris
   );
 
   for (var n = 0; n < MAX && n < secilen.length; n++) {

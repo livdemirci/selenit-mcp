@@ -558,15 +558,26 @@ class SelenitBrowser
       # şey yapmaz. n11.com'da ölçüldü — form yok, arama ikonu `I.new-search-icon`
       # input'un kardeşi. Enter denendikten sonra URL değişmediyse ve input
       # içindeysek, en yakın submit-benzeri kontrolü tıkla.
+      #
+      # n11 ÖLÇÜMÜ (regresyon): Enter URL'yi DEĞİŞTİRİYOR ama yanlış yere
+      # götürüyor — arama kutusunun placeholder'ı dinamik bir ürün önerisi
+      # taşıyor ("Philips Hue GO , 3851 TL"), otomatik tamamlama o öneriyi
+      # seçiyor ve /urun/... açılıyor. Eski kod "URL değişti = başarı" sayıp
+      # geçiyordu (3/3 tekrarda aynı hata). Artık URL değişse bile hedefin
+      # ARAMA SONUCU olduğu doğrulanır; değilse URL şemasıyla düzeltilir.
       if submit && %w[input textarea].include?(element.tag_name)
         begin
           wait_until(timeout: 1.5) { driver.current_url != url_before_type }
+          unless arama_sonucu_sayfasi?(text)
+            via = submit_via_url(element, text)
+            resume_after_js_action if via
+          end
         rescue Selenium::WebDriver::Error::TimeoutError
           # 1) form / submit ikonu
           cozuldu = false
           if (submit_click = js_submit_click(element))
             sleep 0.4
-            cozuldu = driver.current_url != url_before_type
+            cozuldu = driver.current_url != url_before_type && arama_sonucu_sayfasi?(text)
           end
           # 2) hâlâ değişmediyse: URL şemasıyla arama (JS event yutuluyorsa)
           unless cozuldu
@@ -1100,6 +1111,25 @@ class SelenitBrowser
       end
     end
     nil
+  end
+
+  # Arama sonucu sayfası mı? URL'de arama işareti VEYA sayfada sonuç listesi.
+  # Amaç: Enter'ın otomatik tamamlama önerisine gidip /urun/... açmasını
+  # "başarı" saymamak (n11 ölçümü: 3/3 aynı hata).
+  def arama_sonucu_sayfasi?(text)
+    url = driver.current_url.to_s
+    # Ürün detay sayfası asla arama sonucu değildir.
+    return false if url =~ %r{/(urun|product|dp|p)/}i
+
+    # URL arama işareti taşıyorsa kabul.
+    if url =~ /[?&](q|s|query|search|arama)=|(\/arama\/|\/ara\/|\/sr\/|\/search)/i
+      return true
+    end
+
+    # URL'de işaret yok: terim sayfada görünüyor + liste öğesi varsa kabul.
+    arama_terimi_sayfada?(text)
+  rescue StandardError
+    false
   end
 
   # Arama terimi sayfada gerçekten görünüyor mu? URL'de olması yetmez:
