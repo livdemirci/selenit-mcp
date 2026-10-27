@@ -166,9 +166,65 @@ return (function (maxElements) {
     return {
       tag: el.tagName.toLowerCase(),
       type: (el.getAttribute('type') || '').toLowerCase(),
-      name: name,
+      name: aramaIsareti(el) ? ('ARAMA KUTUSU: ' + name) : name,
       href: el.getAttribute('href') || el.getAttribute('src') || ''
     };
+  }
+
+  // Arama kutusu işareti: model bir <input>'un placeholder'ı dinamik ürün
+  // önerisi taşıdığında (ör. "Philips Hue GO , 3851 TL") onu arama kutusu
+  // olarak tanıyamıyor ve görev ilk adımda ölüyor. Dump'a açık işaret koy.
+  // Ölçüt site-nötr: type=search, form içindeki ilk metin alanı, etikette
+  // ara|search|sorgu geçmesi, ya da sayfadaki TEK görünür metin alanı olması.
+  // Modern siteler aramayı <button>/<div role=combobox> olarak render edip
+  // tıklanınca input açıyor; bu durumda da işaret konur (model önce tıklar).
+  function aramaIsareti(el) {
+    var tag = (el.tagName || '').toUpperCase();
+
+    if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
+      // Input olmayan arama tetikleyicisi: görünen etiketi/erişilebilirlik
+      // adı arama anlamı taşıyan düğme/div. DİKKAT: yalnızca buton/div —
+      // <a> elenir, çünkü href'i "/arama?..." olan kampanya/kategori
+      // linkleri arama kutusu sanılıyordu.
+      if (tag !== 'BUTTON' && tag !== 'DIV') return false;
+      var metin = (el.innerText || '').trim().replace(/\s+/g, ' ');
+      if (metin.length === 0 || metin.length > 40) return false;
+      var adt = ((el.getAttribute('aria-label') || '') + ' ' +
+                 (el.getAttribute('placeholder') || '') + ' ' +
+                 (el.getAttribute('title') || '') + ' ' +
+                 metin + ' ' +
+                 (typeof el.className === 'string' ? el.className : '')).toLowerCase();
+      // Arama ANLAMI taşımalı; href'e BAKILMAZ.
+      return /(^|[^a-z])(ara|arama|search|sorgu|query)([^a-z]|$)/.test(adt);
+    }
+
+    var METIN = { text: 1, search: 1, email: 1, tel: 1, url: 1, number: 1, password: 1, '': 1 };
+    var tip = (el.getAttribute('type') || '').toLowerCase();
+    if (el.tagName === 'INPUT' && !METIN[tip]) return false;
+    var r = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+    if (!r || r.width <= 0 || r.height <= 0) return false;
+
+    if (tip === 'search') return true;
+    if (el.form) {
+      var ilk = el.form.querySelector('input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=submit])');
+      if (ilk === el) return true;
+    }
+    var ad = ((el.getAttribute('placeholder') || '') + ' ' +
+              (el.getAttribute('aria-label') || '') + ' ' +
+              (el.getAttribute('name') || '') + ' ' +
+              (el.getAttribute('id') || '')).toLowerCase();
+    if (/(^|[^a-z])(ara|arama|search|sorgu|query)([^a-z]|$)/.test(ad)) return true;
+
+    // Sayfadaki tek görünür metin alanı → kesinlikle arama/giriş kutusu.
+    var hepsi = document.querySelectorAll('input,textarea');
+    var sayi = 0;
+    for (var i = 0; i < hepsi.length; i++) {
+      var t2 = (hepsi[i].getAttribute('type') || '').toLowerCase();
+      if (hepsi[i].tagName === 'INPUT' && !METIN[t2]) continue;
+      var r2 = hepsi[i].getBoundingClientRect();
+      if (r2.width > 0 && r2.height > 0) sayi++;
+    }
+    return sayi === 1;
   }
 
   // Eşleşen tüm öğeleri topla; döküm sırası işaretlemenin SONUNDA belirlenir

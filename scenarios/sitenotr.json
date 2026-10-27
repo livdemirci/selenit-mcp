@@ -1,0 +1,28 @@
+{
+  "task": "sitenotr",
+  "desc": "Site-nötr: arama yap, sonuç sayfasındaki ilk ürünün adını ve fiyatını oku",
+  "recorded_at": "2026-10-28T00:29:34+0300",
+  "model": "google/gemma-4-e4b",
+  "answer": "5,0 MWTY3TU/A Apple MWTY3TU/A Lightning Konnektörlü Earpods Kulaklık | 1.149 TL",
+  "final_url": "https://www.vatanbilgisayar.com/arama/kulaklik/",
+  "assert_js": null,
+  "assert_value": null,
+  "steps": [
+    {
+      "tool": "browser_navigate",
+      "args": {
+        "url": "https://www.vatanbilgisayar.com"
+      },
+      "selector": null
+    },
+    {
+      "tool": "browser_type",
+      "args": {
+        "ref": "e1",
+        "submit": true,
+        "text": "kulaklik"
+      },
+      "selector": "#navbar-search-input"
+    }
+  ]
+}

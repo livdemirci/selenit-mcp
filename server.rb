@@ -37,7 +37,7 @@ STDIN.sync = true
 
 module Tools
   # --minimal: küçük yerel modeller (Gemma 4 E4B, Qwen 4B, MiniCPM) 23 araçlık
-  # şemayla ilk turda BOŞ cevap veriyor (ölçüm: n11 görevinde 10 adımın
+  # şemayla ilk turda BOŞ cevap veriyor (ölçüm: bir arama görevinde 10 adımın
   # hiçbirinde araç çağrısı yok). Araç sayısı 7'ye indirilince çağrı başlıyor.
   # Ölçüt "site" değil "model yeteneği": şema bütçesi dar olan her model için.
   MINIMAL_ADLAR = %w[

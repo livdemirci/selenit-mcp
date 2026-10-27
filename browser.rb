@@ -535,13 +535,89 @@ class SelenitBrowser
     @alert_retry_i = 0
   end
 
+  # Sayfadaki metin alanlarını arama-kutusu olasılığına göre sıralayıp ilkini
+  # döndürür. Site adı/seçici yok; tüm sinyaller HTML özniteliklerinden.
+  GIRIS_ALANI_JS = <<~JS
+    (function () {
+      var METIN = {text:1,search:1,email:1,tel:1,url:1,number:1,password:1,"":1};
+      var hepsi = [];
+      var els = document.querySelectorAll('input,textarea');
+      for (var i = 0; i < els.length; i++) {
+        var e = els[i];
+        var tip = (e.getAttribute('type') || '').toLowerCase();
+        if (e.tagName === 'INPUT' && !METIN[tip]) continue;
+        var r = e.getBoundingClientRect();
+        if (r.width <= 0 || r.height <= 0) continue;
+        if (e.disabled || e.readOnly) continue;
+        hepsi.push(e);
+      }
+      if (hepsi.length === 0) return null;
+
+      function sinyal(e) {
+        var tip = (e.getAttribute('type') || '').toLowerCase();
+        var ad = ((e.getAttribute('placeholder') || '') + ' ' +
+                  (e.getAttribute('aria-label') || '') + ' ' +
+                  (e.getAttribute('name') || '') + ' ' +
+                  (e.getAttribute('id') || '') + ' ' +
+                  (e.getAttribute('role') || '')).toLowerCase();
+        var puan = 0;
+        if (tip === 'search') puan += 100;
+        if (e.form) {
+          var ilk = e.form.querySelector('input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=submit])');
+          if (ilk === e) puan += 50;
+        }
+        if (/(^|[^a-z])(ara|arama|search|sorgu|query)([^a-z]|$)/.test(ad)) puan += 40;
+        if (hepsi.length === 1) puan += 200;
+        return puan;
+      }
+
+      var en = hepsi[0], enPuan = -1;
+      for (var k = 0; k < hepsi.length; k++) {
+        var p = sinyal(hepsi[k]);
+        if (p > enPuan) { enPuan = p; en = hepsi[k]; }
+      }
+      // Sıralama puanlaması her zaman bir aday verir; en kötü durumda ilk alan.
+      return hepsi.indexOf(en);
+    })();
+  JS
+
+  def varsayilan_giris_alani
+    index = driver.execute_script(GIRIS_ALANI_JS)
+    return nil if index.nil?
+    alanlar = driver.find_elements(css: "input,textarea").select do |e|
+      begin
+        e.displayed? && !e.enabled?.nil?
+      rescue StandardError
+        false
+      end
+    end
+    alanlar[index.to_i]
+  rescue StandardError
+    nil
+  end
+
   def type(ref: nil, selector: nil, text: "", submit: false, confirm: false)
     ensure_session
     if submit && Policy.require_approval? && !confirm
       return Policy.risky_message("form gönderimi (submit)")
     end
 
-    element = resolve(ref, selector, nil, wait: :visible)
+    # Yedek çözümleme: model çoğu zaman hangi alana yazacağını bilemez ve
+    # `ref`/`selector` vermeden yalnızca metni gönderir ("bluetooth" yaz).
+    # Bu durumda alanı SAYFADAN bul: görünür metin alanlarını, arama kutusu
+    # sinyali taşıyanı önceleyerek sırala. Sinyal sırası (hepsi site-nötr):
+    #   1) type=search
+    #   2) <form> içindeki ilk metin alanı
+    #   3) placeholder/aria-label/name/id'de ara|search|sorgu|query
+    #   4) sayfada TEK görünür metin alanı varsa o
+    # Hiçbiri yoksa anlamlı hata döndür (sessiz başarısızlık yok).
+    if ref.to_s.empty? && selector.to_s.empty?
+      aday = varsayilan_giris_alani
+      return "HATA (type): yazılacak alan bulunamadı (ref/selector ver ya da önce browser_snapshot al)" unless aday
+      element = aday
+    else
+      element = resolve(ref, selector, nil, wait: :visible)
+    end
     url_before_type = driver.current_url
     attempts = 0
     begin

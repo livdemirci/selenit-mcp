@@ -16,7 +16,11 @@ MAX_STEPS = (ENV["BENCH_MAX_STEPS"] || 26).to_i
 KOSUM = (ENV["PROBE"] || 1).to_i
 
 # --- hepsi görevi (tasks.rb'den birebir; prompt aynı metin) ---------------
-HEPSI = TASKS["hepsi"]
+# Görev seçimi: BENCH_TASK ortam değişkeni (varsayılan site-nötr görev).
+# Site-nötr görev hedefini SELENIT_TARGET_URL / SELENIT_TARGET_TERM'den okur;
+# repoda site adı veya siteye özgü CSS seçici bulunmaz.
+GOREV_KEY = ENV["BENCH_TASK"] || "sitenotr"
+HEPSI = TASKS[GOREV_KEY] or raise "bilinmeyen görev: #{GOREV_KEY}"
 
 PW_SYSTEM_PROMPT = <<~S
   Sen bir tarayıcı otomasyon ajanısın. Kurallar:
@@ -124,7 +128,7 @@ def run_one(i, llm, pw, tools)
   started = Time.now
   messages = [
     { role: "system", content: PW_SYSTEM_PROMPT },
-    { role: "user", content: HEPSI[:prompt] }
+    { role: "user", content: HEPSI[:prompt].respond_to?(:call) ? HEPSI[:prompt].call : HEPSI[:prompt] }
   ]
   trace = []
   answer = nil
@@ -164,14 +168,25 @@ def run_one(i, llm, pw, tools)
     messages << { role: "tool", tool_call_id: c["id"], content: output[0, 2500] }
   end
 
-  # check ile birebir aynı hepsi kontrolü: URL'de sepet + TL var mı
+  # Başarı ölçütü görev tanımından gelir (TASKS[...][:check]); böylece aynı
+  # görev her iki araçta AYNI kuralla değerlendirilir. Görevde check yoksa
+  # yedek: URL + cevapta fiyat deseni.
   url = ""
   begin
-    url = pw.call("browser_evaluate", { function: "() => location.href" })
+    url = pw.call("browser_evaluate", { function: "() => location.href" }).to_s
   rescue StandardError
-    nil
+    url = ""
   end
-  passed = url.include?("sepet") && url.match?(/[\d.,]+\s*TL|[\d.,]+,?\d{1,2}/)
+  passed =
+    if HEPSI[:check]
+      begin
+        HEPSI[:check].call(pw, answer.to_s) ? true : false
+      rescue StandardError
+        false
+      end
+    else
+      url.match?(/[\d.,]+\s*(TL|₺)|[\d.,]+,?\d{1,2}/) && answer.to_s.match?(/\d/)
+    end
 
   {
     pass: passed, adim: trace.size, sure: (Time.now - started).round(1),

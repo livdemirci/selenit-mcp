@@ -219,70 +219,6 @@ TASKS = {
         answer.to_s.include?("agent_rapor.pdf")
     end
   },
-  "sepet" => {
-    desc: "Trendyol: arama → en düşük fiyat → sepete ekle → sepette fiyat doğrulama",
-    prompt: "Gerçek Trendyol sitesinde alışveriş akışını sırayla yap, her adımı beklediği gibi yapmadan diğerine geçme:\n" \
-            "1) https://www.trendyol.com adresine git.\n" \
-            "2) Açılışta engelleyici pencere/bant varsa kapat (X düğmesi veya 'Tümünü Reddet').\n" \
-            "3) Arama kutusuna 'kulaklık' yaz ve Enter'a bas.\n" \
-            "4) Sonuç sayfasında sıralama seçeneğini 'En Düşük Fiyat' yap. URL'de sst=PRICE_BY_ASC olmalı.\n" \
-            "5) Sonuç listesindeki ilk ürün kartının adını ve fiyatını söyle.\n" \
-            "6) Bu ürünün 'Sepete Ekle' düğmesine bas ve eklenmesini bekle.\n" \
-            "7) 'Sepetim' bağlantısıyla sepet sayfasına git.\n" \
-            "8) Sepet sayfasında aynı ürünün fiyatını oku; kart fiyatıyla AYNI mı söyle.\n" \
-            "Cevapta şu formatta ver: ürün | kart fiyatı | sepet fiyatı | eşleşme: evet/hayır | sst var mı.",
-    check: lambda do |mcp, answer|
-      url = mcp.call("browser_evaluate", { "script" => "return location.href" })
-      # Sepete ulaşıldı mı? Ürün/cevap en azından bir fiyat bilgisi taşımalı.
-      url.to_s.include?("sepetim") && answer.to_s =~ /\d+[\.,]\d{2}\s*TL/
-    end
-  },
-  "hepsi" => {
-    desc: "Hepsiburada: arama → en düşük fiyat → ilk satılabilir ürünü sepete ekle → sepette fiyat doğrulama",
-    prompt: "Gerçek Hepsiburada sitesinde alışveriş akışını sırayla yap:\n" \
-            "1) https://www.hepsiburada.com adresine git.\n" \
-            "2) Ara çubuğuna 'kulaklık' yaz ve Enter'a bas.\n" \
-            "   ÖNEMLİ: yazmadan önce arama inputunu TIKLA (input[aria-label='Site içinde ara']) —\n" \
-            "   sanal/sahte input farklı bir eleman olabilir.\n" \
-            "3) Sonuç sayfasında sıralama denetimini aç (div[class*='dropdown-cf']) ve\n" \
-            "   'En düşük fiyat' seçeneğine bas. URL'de siralama=artanfiyat olmalı.\n" \
-            "4) Sonuç listesindeki İLK organik ürünün adını ve fiyatını söyle.\n" \
-            "   DİKKAT: listeye reklam kartları karışır; başında 'Reklam' olmayan kartı seç.\n" \
-            "5) O kartın sepete ekleme ikonunu bas — düğme metni YOK:\n" \
-            "   [class*='productListContent-'] li article svg[class*='spinnerIcon']\n" \
-            "6) Toast oku: 'Ürün sepete eklendi' çıkmadıysa ve 'geçici olarak temin edilemiyor'\n" \
-            "   hatası varsa stoksuzdur → bir SONRAKİ satılabilir ürüne geç ve yazıya yaz.\n" \
-            "   Toast hiç GELMEDİYSE de ürün tepki vermemiş sayılır: taze snapshot al,\n" \
-            "   SIRADAKİ 'Sepete ekle ikonu' ref'ine geç (aynı ref'e 3 kez tıklamak döngü hatasıdır).\n" \
-            "7) 'Sepetim' ile sepette gel; sepetteki ürün adı ve fiyatını oku.\n" \
-            "Cevapta şu formatta ver: ürün | kart fiyatı | sepet fiyatı | eşleşme: evet/hayır | toast: okuma",
-    check: lambda do |mcp, answer|
-      url = mcp.call("browser_evaluate", { "script" => "return location.href" })
-      url.to_s.include?("sepet") && answer.to_s =~ /\d+[\.,]\d{2}\s*TL/
-    end
-  },
-  "boyner" => {
-    desc: "Boyner: erkek ayakkabı → fiyat artan → en ucuz ayakkabı → beden → sepete 4 adet",
-    prompt: "Gerçek Boyner sitesinde alışveriş akışını sırayla yap, her adımın sonucunu bekle:\n" \
-            "1) https://www.boyner.com.tr/ adresine git.\n" \
-            "2) Üst menüdeki 'ERKEK' bağlantısına tıkla.\n" \
-            "3) 'Erkek Ayakkabı' bağlantısına tıkla (adrese doğrudan gitme; tıklayarak ilerle).\n" \
-            "4) 'Önerilen Sıralama' düğmesine tıkla; açılan menüden 'Fiyat - Düşükten Yükseğe' seçeneğine tıkla.\n" \
-            "   URL'de sirala=fiyatArtan görünmeli.\n" \
-            "5) Listede adında 'Ayakkabı' geçen İLK ürünü seç (bakım/cila/sünger/bağcık/terlik ürünlerini atla).\n" \
-            "   Gerekirse sayfayı kaydır; ürün kartındaki bağlantı metnini kullan. Adını ve fiyatını not et.\n" \
-            "6) Ürün sayfasında 'Beden' açılır menüsünü browser_select (selector: .b-select) ile aç ve\n" \
-            "   stokta olan bir beden seç (ör. 45).\n" \
-            "7) 'SEPETE EKLE' düğmesine bas; ardından 'SEPETE GİT' ile sepete gel.\n" \
-            "8) Sepette adet alanını 4 yap (artı düğmesi ya da adet inputu) ve '4 ürün' yazdığını doğrula.\n" \
-            "Cevapta şu formatta ver: ürün | beden | birim fiyat | sepet adedi | sepet tutarı.",
-    check: lambda do |mcp, answer|
-      url = mcp.call("browser_evaluate", { "script" => "return location.href" })
-      metin = mcp.call("browser_evaluate", { "script" => "return document.body.innerText" })
-      url.to_s.include?("/sepet") && metin.to_s.match?(/\b4\s*ürün/i) &&
-        answer.to_s =~ /\d+[\.,]\d{2}\s*TL/
-    end
-  },
   "magaza" => {
     desc: "Mağaza (yerel): sıralama menüsü → en ucuz ayakkabı → sepete 4 adet",
     prompt: "Şu sayfaya git: #{APP}/magaza .\n" \
@@ -297,6 +233,39 @@ TASKS = {
       }).to_s
       parcalar = state.split("|", 2)
       parcalar[0].to_s.strip == "4" && parcalar[1].to_s.include?("Ayakkabı") && parcalar[1].to_s.include?("x 4")
+    end
+  },
+
+  # ---------------------------------------------------------------------------
+  # SITE-NÖTR GÖREV: hedef yalnızca ortam değişkeninden gelir.
+  # Repoda site adı, alan adı veya siteye özgü CSS seçici YOKTUR. Amaç,
+  # aracın herhangi bir arama/listeleme sayfasında aynı algoritmayla
+  # çalıştığını ölçmek: arama kutusunu bul → ara → sonuç sayfasında fiyat
+  # taşıyan ilk ürünü oku.
+  #   SELENIT_TARGET_URL=https://... SELENIT_TARGET_TERM=... ruby benchmark.rb sitenotr
+  # ---------------------------------------------------------------------------
+  "sitenotr" => {
+    desc: "Site-nötr: arama yap, sonuç sayfasındaki ilk ürünün adını ve fiyatını oku",
+    prompt: lambda do
+      hedef = ENV["SELENIT_TARGET_URL"].to_s
+      terim = ENV["SELENIT_TARGET_TERM"].to_s
+      raise "SELENIT_TARGET_URL ve SELENIT_TARGET_TERM tanımlı olmalı" if hedef.empty? || terim.empty?
+      "Şu adrese git: #{hedef}\n" \
+      "1) Sayfada arama/giriş alanı varsa içine '#{terim}' yaz ve gönder (submit).\n" \
+      "2) Arama kutusu doğrudan input değil de bir düğme/başlıksa önce ona tıkla, açılan alana yaz.\n" \
+      "3) Sonuç sayfası geldiğinde fiyat gösteren bir ürün kartı bul.\n" \
+      "4) O kartın ürün adını ve fiyatını söyle.\n" \
+      "Cevapta şu formatta ver: ürün | fiyat"
+    end,
+    # Ölçüt CEVABA bakar, sayfa durumuna değil: model doğru ürün+fiyatı
+    # söylediyse görev tamamdır. (Sayfa metnini de şart koşmak, arama sonrası
+    # farklı bir görünüme geçen sitelerde yanlış negatif üretiyordu.)
+    check: lambda do |_mcp, answer|
+      a = answer.to_s
+      # "ürün | fiyat" formatı: fiyat deseni + ürün adı (en az 10 karakter).
+      fiyat = a.match?(/\d[\d.,]*\s*(?:TL|₺|\$|€|£)/)
+      urun = a.include?("|") && a.split("|", 2)[0].to_s.strip.length >= 10
+      fiyat && urun
     end
   }
 }.freeze

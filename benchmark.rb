@@ -73,7 +73,9 @@ def run_task(key, spec, mcp, llm, tools)
   started = Time.now
   messages = [
     { role: "system", content: SYSTEM_PROMPT },
-    { role: "user", content: spec[:prompt] }
+    # prompt düz metin veya lambda olabilir (site-nötr görevler hedefi
+    # ortam değişkeninden okuyup metni çalışma anında üretir).
+    { role: "user", content: spec[:prompt].respond_to?(:call) ? spec[:prompt].call : spec[:prompt] }
   ]
   trace = []
   steps = []
