@@ -1894,7 +1894,17 @@ class SelenitBrowser
       if sel.start_with?("shadow::")
         host_path, inner = sel.sub("shadow::", "").split("||", 2)
         element = driver.execute_script(SHADOW_QUERY_JS, host_path, inner)
-        raise Selenium::WebDriver::Error::NoSuchElementError, sel if element.nil?
+        if element.nil?
+          # JS hata nedenini window.__SL_SHADOW_HATA'ya yazdı (Hash döndürmek
+          # Selenium'da güvenilir değil, bu yüzden yan kanal kullanılıyor).
+          sebep = begin
+            driver.execute_script("return window.__SL_SHADOW_HATA || ''").to_s
+          rescue StandardError
+            ""
+          end
+          raise Selenium::WebDriver::Error::NoSuchElementError,
+                sebep.empty? ? sel : "#{sel} — #{sebep}"
+        end
         return element
       end
       # Aynı seçici birden çok öğe döndürebilir (menü + gizli kopya). İlk
@@ -1969,10 +1979,49 @@ class SelenitBrowser
   end
 
   # "shadow::host||inner" seçicisini çözer
+  # Shadow DOM sorgusu — İÇ İÇE (nested) destekli.
+  #
+  # Zhimin Zhan'ın "Automating Shadow DOM with Selenium WebDriver" notundaki
+  # temel nokta: standart bir sürücü shadow içindeki öğeleri doğrudan bulamaz;
+  # host elementinden shadowRoot'a inip oradan sorgulamak gerekir.
+  #
+  # Buradaki uygulama tek seviyeyle sınırlıydı (`host.shadowRoot.querySelector`)
+  # ve yalnızca AÇIK shadow root'a erişiyordu. Gerçek sayfalarda iki durum
+  # daha var:
+  #   1) İÇ İÇE shadow: host > shadowRoot > host2 > shadowRoot > hedef
+  #   2) KAPALI (closed) shadow: element.shadowRoot null döner; programatik
+  #      erişim YOKTUR. Bu bir tarayıcı güvenlik sınırıdır — aşmanın meşru
+  #      yolu yok; kullanıcıya açıkça söylenmeli.
+  #
+  # host_path: "host1 >>> host2 >>> host3"  (her >>> bir shadow sınırı)
+  # inner:     son shadowRoot içinde aranacak CSS seçici
+  #
+  # DİKKAT: Selenium execute_script'ten Hash/obje döndürmek güvenilir değil
+  # (WebElement'e çevrilemeyince nil geliyor). Bu yüzden hata mesajı
+  # window.__SL_SHADOW_HATA içine yazılır, fonksiyon ELEMENT ya da null döner.
   SHADOW_QUERY_JS = <<~JS
-    var host = document.querySelector(arguments[0]);
-    if (!host || !host.shadowRoot) return null;
-    return host.shadowRoot.querySelector(arguments[1]);
+    window.__SL_SHADOW_HATA = '';
+    return (function (hostPath, inner) {
+      var parcalar = String(hostPath).split('>>>').map(function (s) { return s.trim(); }).filter(Boolean);
+      var kapsam = document;
+      for (var i = 0; i < parcalar.length; i++) {
+        var host = kapsam.querySelector(parcalar[i]);
+        if (!host) {
+          window.__SL_SHADOW_HATA = 'host bulunamadi: ' + parcalar[i];
+          return null;
+        }
+        if (!host.shadowRoot) {
+          window.__SL_SHADOW_HATA = 'KAPALI shadow root: ' + parcalar[i] +
+            ' (element.shadowRoot null). Tarayıcı güvenlik sınırı: programatik erişim yok, ' +
+            'gerçek kullanıcı etkileşimi gerekir; bu öğe için başka bir yol dene.';
+          return null;
+        }
+        kapsam = host.shadowRoot;
+      }
+      var hedef = kapsam.querySelector(inner);
+      if (!hedef) window.__SL_SHADOW_HATA = 'shadow içinde bulunamadı: ' + inner;
+      return hedef;
+    })(arguments[0], arguments[1]);
   JS
 
   # Shadow DOM içindeki ref'leri de bulur
