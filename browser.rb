@@ -381,6 +381,12 @@ class SelenitBrowser
     # Doğrulama ekranları kısadır; uzun içerikli bir sayfada geçen
     # "access denied" gibi ifadeler yanlış pozitif üretmesin.
     return false if uzunluk > 2000
+    # Gövde metni doğrulama kalıbı taşımıyorsa sayfa geçmiş sayılır:
+    # gerçek içerik geldiğinde başlık güncellenmese bile (ör. data: URL'lerde
+    # document.title ataması yansımayabilir) doğrulama bitmiştir.
+    govdeTemiz = !CHALLENGE_PATTERNS.any? { |re| re.match?(govde) }
+    return false if govdeTemiz && !CHALLENGE_PATTERNS.any? { |re| re.match?(baslik) }
+
     CHALLENGE_PATTERNS.any? { |re| re.match?(baslik) || re.match?(govde) }
   rescue StandardError
     false
@@ -591,6 +597,85 @@ class SelenitBrowser
     })();
   JS
 
+  # Gizli (visibility:hidden / opacity:0) öğeyi ve gizliliği miras aldığı
+  # atalarını GEÇİCİ olarak görünür yapar. Yazma bittikten sonra stil eski
+  # hâline döndürülür. Amaç: tıklamada açılan arama panelleri gibi, açılışı
+  # animasyonla geciken alanlara yazabilmek. Siteye özgü değil.
+  GECICI_GORUNUR_JS = <<~JS
+    var el = arguments[0];
+    if (!el) return 0;
+    el.__slOnceki = [];
+    var dugumler = [];
+    var p = el;
+    for (var i = 0; i < 8 && p && p !== document.documentElement; i++, p = p.parentElement) {
+      dugumler.push(p);
+    }
+    var sayi = 0;
+    dugumler.forEach(function (n) {
+      var cs = window.getComputedStyle(n);
+      var degisti = false;
+      if (cs.visibility === 'hidden') { n.style.setProperty('visibility', 'visible', 'important'); degisti = true; }
+      if (cs.display === 'none') { n.style.setProperty('display', 'block', 'important'); degisti = true; }
+      if (cs.opacity === '0') { n.style.setProperty('opacity', '1', 'important'); degisti = true; }
+      if (degisti) { el.__slOnceki.push(n); sayi++; }
+    });
+    return sayi;
+  JS
+
+  GECICI_GERI_AL_JS = <<~JS
+    var el = arguments[0];
+    if (!el || !el.__slOnceki) return 0;
+    el.__slOnceki.forEach(function (n) {
+      n.style.removeProperty('visibility');
+      n.style.removeProperty('display');
+      n.style.removeProperty('opacity');
+    });
+    var n2 = el.__slOnceki.length;
+    el.__slOnceki = null;
+    return n2;
+  JS
+
+  def gecici_gorunur_yap(element)
+    driver.execute_script(GECICI_GORUNUR_JS, element)
+  rescue StandardError
+    nil
+  end
+
+  def gecici_geri_al(element)
+    driver.execute_script(GECICI_GERI_AL_JS, element)
+  rescue StandardError
+    nil
+  end
+
+  # Bu element bir ARAMA alanı mı? (submit'i otomatikleştirmek için)
+  ARAMA_ALANI_JS = <<~JS
+    var el = arguments[0];
+    if (!el) return false;
+    var tag = (el.tagName || '').toLowerCase();
+    // Custom element adı arama anlamı taşıyor mu
+    if (tag.indexOf('-') > 0 && /search|arama|sorgu|query/i.test(tag)) return true;
+    if (tag !== 'input' && tag !== 'textarea') return false;
+    var tip = (el.getAttribute('type') || '').toLowerCase();
+    if (tip === 'search') return true;
+    var ad = ((el.getAttribute('placeholder') || '') + ' ' +
+              (el.getAttribute('aria-label') || '') + ' ' +
+              (el.getAttribute('name') || '') + ' ' +
+              (el.getAttribute('id') || '')).toLowerCase();
+    if (/(^|[^a-z])(ara|arama|search|sorgu|query)([^a-z]|$)/.test(ad)) return true;
+    // Form içindeki ilk metin alanı da arama kutusu sayılır
+    if (el.form) {
+      var ilk = el.form.querySelector('input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=submit])');
+      if (ilk === el) return true;
+    }
+    return false;
+  JS
+
+  def arama_alani_mi?(element)
+    driver.execute_script(ARAMA_ALANI_JS, element) ? true : false
+  rescue StandardError
+    false
+  end
+
   def varsayilan_giris_alani
     index = driver.execute_script(GIRIS_ALANI_JS)
     return nil if index.nil?
@@ -626,8 +711,37 @@ class SelenitBrowser
       return "HATA (type): yazılacak alan bulunamadı (ref/selector ver ya da önce browser_snapshot al)" unless aday
       element = aday
     else
-      element = resolve(ref, selector, nil, wait: :visible)
+      # Gizli ama MEVCUT alan: bazı siteler arama panelini visibility:hidden
+      # ile gizleyip tıklamada açıyor; açılış animasyonu bitmeden yazma
+      # denendiğinde Selenium "öğe var ama tıklanamıyor" veriyor.
+      # Çözüm: öğe bulunduğu halde görünmezse, KENDİSİNİ ve gizli atalarını
+      # geçici olarak görünür yap, yaz, sonra eski stile döndür. Bu, siteye
+      # özgü değil; gizli form alanı olan her sayfada çalışır.
+      element = begin
+        resolve(ref, selector, nil, wait: :visible)
+      rescue Selenium::WebDriver::Error::TimeoutError
+        gizli = begin
+          find_element_once(ref, selector, nil)
+        rescue StandardError
+          nil
+        end
+        raise unless gizli
+
+        gecici_gorunur_yap(gizli)
+        gizli
+      end
     end
+    # OTOMATİK SUBMIT: model arama kutusuna yazıp Enter'ı unutursa görev
+    # ölür (ölçüm: <input>'a "CLA" yazıldı, submit verilmedi, sayfa
+    # değişmedi, model scroll etmeye başladı). Arama kutusu sinyali taşıyan
+    # bir alana yazıldıysa ve submit verilmediyse Enter'ı biz göndeririz.
+    # Site-nötr ölçüt: alanın kendi sinyalleri (type=search, form içi ilk
+    # alan, yer tutucuda ara/arama/search, custom element adı).
+    if !submit && arama_alani_mi?(element)
+      submit = true
+      @son_yazma_notu = " (not: arama alanına yazıldı, Enter otomatik gönderildi)"
+    end
+
     url_before_type = driver.current_url
     attempts = 0
     begin
@@ -765,6 +879,9 @@ class SelenitBrowser
       end
     end
     wait_after_action(previous_url: url_before_type)
+    # Gizli alanı geçici görünür yaptıysak stili eski hâline döndür.
+    # (Sayfa kendi düzenini korumalı; kalıcı stil değişikliği bırakma.)
+    gecici_geri_al(element) if element
     "yazıldı: #{ref || selector} <- #{text.to_s[0, 60].inspect}#{submit ? ' + Enter' : ''}#{@son_yazma_notu}\n#{snapshot_text}#{harvest_toasts}"
   rescue Selenium::WebDriver::Error::UnexpectedAlertOpenError => e
     metin = e.message[/Alert text : (.+?)\}/, 1].to_s

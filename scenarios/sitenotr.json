@@ -1,10 +1,10 @@
 {
   "task": "sitenotr",
   "desc": "Site-nötr: arama yap, sonuç sayfasındaki ilk ürünün adını ve fiyatını oku",
-  "recorded_at": "2026-10-28T21:42:51+0300",
+  "recorded_at": "2026-10-28T23:30:31+0300",
   "model": "google/gemma-4-e4b",
-  "answer": "Kargo dahil en ucuz bir kulaklık bulundu ve fiyatı 690,00 TL.\n\nürün | Kargo dahil en ucuz kulaklık\nfiyat | 690,00 TL",
-  "final_url": "https://www.akakce.com/kulaklik.html",
+  "answer": "ürün | Anker SoundCore Liberty 5 ANC TWS Kulak İçi Bluetooth Kulaklık, fiyat | 4.699,00 TL",
+  "final_url": "https://www.akakce.com/arama/?q=kulaklik",
   "assert_js": null,
   "assert_value": null,
   "steps": [

@@ -232,7 +232,18 @@ return (function (maxElements) {
             var sr = el.shadowRoot;
             var ct2 = (el.tagName || '').toLowerCase();
             // Custom element + shadowRoot yok → büyük olasılıkla closed shadow.
+            // AMA: shadowRoot VARSA erişilebilir demektir; kapalı etiketi koyma.
             kilitli = ct2.indexOf('-') > 0 && !sr;
+            // Kapalı etiketi yalnızca GERÇEKTEN erişilemezse anlamlı:
+            // boyut sıfırsa ve shadow yoksa.
+            if (kilitli) {
+              var rr = el.getBoundingClientRect();
+              if (rr.width > 0 && rr.height > 0) {
+                // Görünür boyutu var: kapalı olabilir ama erişilebilir olma
+                // ihtimali yüksek → "önce tıkla" demek daha doğru.
+                kilitli = false;
+              }
+            }
           } catch (e) { kilitli = false; }
           etiket = etiket + (kilitli
             ? ' [KAPALI/ERİŞİLEMEZ — tıklama çalışmayabilir, alternatif yol kullan]'

@@ -252,17 +252,38 @@ TASKS = {
       raise "SELENIT_TARGET_URL ve SELENIT_TARGET_TERM tanımlı olmalı" if hedef.empty? || terim.empty?
       "Şu adrese git: #{hedef}\n" \
       "1) Sayfada arama/giriş alanı varsa içine '#{terim}' yaz ve gönder (submit).\n" \
+      "   ÖNEMLİ: dump'ta ilk sırada bir 'Arama' BAĞLANTISI (a etiketi) varsa önce\n" \
+      "   ona tıkla — asıl arama kutusu ondan sonra açılır. Doğrudan linke yazmaya\n" \
+      "   çalışırsan 'öğe tıklanamıyor' hatası alırsın.\n" \
       "2) Arama kutusu doğrudan input değil de bir düğme/başlıksa önce ona tıkla, açılan alana yaz.\n" \
-      "3) Sonuç sayfası geldiğinde fiyat gösteren bir ürün kartı bul.\n" \
-      "4) O kartın ürün adını ve fiyatını söyle.\n" \
-      "Cevapta şu formatta ver: ürün | fiyat"
+      "3) Arama kutusu HİÇ YOKSA veya açılmıyorsa (dump'ta [KAPALI] / [ERİŞİLEMEZ] yazıyorsa, " \
+      "ya da tıklama 'öğe var ama tıklanamıyor' hatası veriyorsa): arama kutusunda ISRAR ETME. " \
+      "Bunun yerine sayfadaki mevcut bağlantılarda '#{terim}' ile eşleşen bir hedef ara " \
+      "(browser_find kullan) ve en yakın olana tıkla. Bulamazsan görevi 'arama kutusu yok, " \
+      "şu bağlantılar var' diyerek cevapla.\n" \
+      "4) Sonuç sayfası geldiğinde, SAYFANIN TÜRÜNE göre cevap ver:\n" \
+      "   - Liste/ürün sayfasıysa (fiyat görünüyorsa): ilk sonucun adını ve fiyatını yaz.\n" \
+      "   - Kurumsal/ürün-detay sayfasıysa (fiyat YOKSA): arama sonucunda çıkan ilk\n" \
+      "     anlamlı başlığı ve ona giden bağlantının adresini yaz. Fiyat UYDURMA.\n" \
+      "   - 404/hata sayfasına düştüysen: bunu açıkça söyle ve arama terimini tekrar\n" \
+      "     denemek yerine elde ettiğin sonucu bildir.\n" \
+      "5) Fiyat varsa 'ürün | fiyat', yoksa 'sonuç | adres' formatında ver."
     end,
     # Ölçüt CEVABA bakar, sayfa durumuna değil: model doğru ürün+fiyatı
     # söylediyse görev tamamdır. (Sayfa metnini de şart koşmak, arama sonrası
     # farklı bir görünüme geçen sitelerde yanlış negatif üretiyordu.)
     check: lambda do |_mcp, answer|
       a = answer.to_s
-      return false unless a.match?(/\d[\d.,]*\s*(?:TL|₺|\$|€|£)/)
+      # Fiyatlı sonuç VEYA (fiyatsız sitede) anlamlı bir sonuç + adres.
+      # Fiyat deseni: "1.970,99 TL", "690,00 TL" ve kırpılmış "250+" gibi
+      # biçimleri de kabul et (model cevabı 130 karakterde kesilebiliyor).
+      # Fiyat deseni: "1.970,99 TL" (birim sonda) VE "₺ 4.873.000" /
+      # "$19.99" (birim başta) biçimlerinin ikisini de kabul et.
+      fiyatli = a.match?(/\d[\d.,]*\s*(?:TL|₺|\$|€|£)/) ||
+                a.match?(/(?:₺|\$|€|£)\s*\d[\d.,]*/) ||
+                a.match?(/\d[\d.,]{2,}\s*\+/)
+      adresli = a.match?(/https?:\/\/\S+|\/\S+\.html|başlık|sonuç|link/i)
+      return false unless fiyatli || adresli
 
       # Ürün adı kontrolü BİÇİM BAĞIMSIZ olmalı: model bazen "ürün | ad fiyat |
       # 99,90 TL" gibi fazladan ayraç/etiket ekliyor ve split("|",2) ile alınan
