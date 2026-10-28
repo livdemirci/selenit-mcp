@@ -14,6 +14,20 @@ return (function (maxElements) {
   var q = 'a[href],button,input,textarea,select,summary,iframe,' +
           '[role=button],[role=link],[role=textbox],[role=checkbox],[role=tab],' +
           '[role=option],[role=menuitem],' +
+          // WEB COMPONENT'LER (custom element). Kurumsal tasarım sistemleri
+          // arama kutusunu <fss-search-input>, <my-search>, <x-search> gibi
+          // tire içeren özel etiketlerle render eder. Bu etiketler yukarıdaki
+          // selector'lerin HİÇBİRİNE uymaz, dolayısıyla arama kutusu dump'a
+          // hiç girmez ve görev ilk adımda ölür. Ölçüm: bir kurumsal sitede
+          // sayfada hiç <input> yoktu; arama <fss-search-input> içindeydi.
+          // Genel kural: adında aria/role/search sinyali taşıyan custom
+          // element'leri de tara (tire = custom element göstergesi).
+          '*[class*="search" i],*[class*="arama" i],' +
+          // Tag adında search/arama geçen custom element'ler. CSS selector
+          // tag adına göre joker kabul etmez; bu yüzden yaygın adları
+          // açıkça listeliyoruz ve walk() ayrıca tire içeren etiketleri tarar.
+          'fss-search-input,search-input,x-search,my-search,site-search,' +
+          'header-search,search-box,search-bar,' +
           // Toast'lar (başarı/hata bildirimleri) model için önemlidir: "Ürün sepete
           // eklendi", "ürün temin edilemiyor" gibi dönütleri görünür kılar.
           '[role=alert],[role=status],' +
@@ -32,13 +46,36 @@ return (function (maxElements) {
           '[class*="select-option" i],[class*="select__option" i],' +
           '[onclick],[contenteditable="true"]';
 
-  function visible(el) {
+  // Görünürlük: yalnızca öğenin kendi stiline bakmak YETMEZ. Öğe 0x0
+  // olabilir ya da atası opacity:0 / display:none ile gizlenmiş olabilir
+  // (hover/focus ile açılan arama kutuları böyle çalışır).
+  // Ölçüm: bir kurumsal sitede arama kutusu <fss-search-input> 0x0 boyutta
+  // ve atası opacity:0 idi; kullanıcı fareyi üzerine getirince mercek ikonu
+  // beliriyor. Bu durumda öğe "görünmez" sayılıp dump'tan atılıyor ve model
+  // arama kutusunun varlığını hiç öğrenemiyordu.
+  // Çözüm: gizli olsa da ARAMA/GİRİŞ sinyali taşıyan öğeler "kapalı" olarak
+  // işaretlenip yine de dump'a alınır; model önce tetikleyiciye dokunur.
+  function gorunurluk(el) {
     var rect = el.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) return false;
+    var boyut = rect.width > 0 && rect.height > 0;
     var style = window.getComputedStyle(el);
-    if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') return false;
-    if (el.disabled) return false;
-    return true;
+    var kendiGizli = style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0';
+    // Atalarda gizlilik var mı (en fazla 6 seviye)
+    var ataGizli = false;
+    var p = el.parentElement;
+    for (var d = 0; d < 6 && p && p !== document.body; d++, p = p.parentElement) {
+      var ps = window.getComputedStyle(p);
+      if (ps.display === 'none' || ps.visibility === 'hidden' || ps.opacity === '0') { ataGizli = true; break; }
+    }
+    return { boyut: boyut, gizli: kendiGizli || ataGizli, disabled: !!el.disabled };
+  }
+
+  function visible(el) {
+    var v = gorunurluk(el);
+    if (v.disabled) return false;
+    if (v.boyut && !v.gizli) return true;
+    // Görünmez ama ARAMA sinyali taşıyorsa yine de listele (kapalı işaretli).
+    return !!(el.tagName && el.tagName.indexOf('-') > 0 && /search|such|arama/i.test(el.tagName));
   }
 
   function clearRefs(root) {
@@ -77,6 +114,18 @@ return (function (maxElements) {
                 el.getAttribute('title') ||
                 el.getAttribute('src') || '')
                .replace(/\s+/g, ' ').trim();
+
+    // Metinsiz custom element: <fss-search-input> gibi öğelerin içi kapalı
+    // olduğu için metni boş gelir. Model için anlamlı bir etiket üret.
+    if (!name) {
+      var ct = (el.tagName || '').toLowerCase();
+      // Yalnızca CUSTOM ELEMENT'ler için tag adından etiket üret.
+      // Sıradan etiketler (svg/div/span) için isim BOŞ kalsın; aksi halde
+      // aşağıdaki "metinsiz sepete ekleme ikonu" kuralı ezilir (regresyon).
+      if (ct.indexOf('-') > 0) {
+        name = /search|arama|sorgu|query/.test(ct) ? 'Arama kutusu' : ct;
+      }
+    }
 
     // Metinsiz sepete ekleme ikonuna okunur ad ver (HBI spinnerIcon katmanı).
     if (!name && /^svg$/i.test(el.tagName || '') &&
@@ -166,7 +215,15 @@ return (function (maxElements) {
     return {
       tag: el.tagName.toLowerCase(),
       type: (el.getAttribute('type') || '').toLowerCase(),
-      name: aramaIsareti(el) ? ('ARAMA KUTUSU: ' + name) : name,
+      name: (function () {
+        var kapali = false;
+        try { var v = gorunurluk(el); kapali = (v.gizli || !v.boyut); } catch (e) { kapali = false; }
+        var etiket = name;
+        if (aramaIsareti(el)) etiket = 'ARAMA KUTUSU: ' + etiket;
+        // Kapalı ama etkileşimli öğe: model önce üzerine gelmeli/tıklamalı.
+        if (kapali && etiket) etiket = etiket + ' [KAPALI — önce tıkla/hover]';
+        return etiket;
+      })(),
       href: el.getAttribute('href') || el.getAttribute('src') || ''
     };
   }
@@ -258,9 +315,21 @@ return (function (maxElements) {
     return sec.join(',');
   }
 
+  // Tag adında tire geçen (custom element) ve adı arama/giriş sinyali taşıyan
+  // öğeler: CSS selector bunları joker ile yakalayamaz. Tüm custom
+  // element'leri gezip TAG ADI üzerinden süzüyoruz.
+  var CUSTOM_ARAMA = /search|arama|sorgu|query|inputbox/i;
+
   function walk(root, inShadow) {
     var els = root.querySelectorAll(q);
     for (var k = 0; k < els.length; k++) toplama_hedef(els[k], inShadow);
+
+    // Custom element taraması (tag adı bazlı)
+    var tum = root.querySelectorAll('*');
+    for (var ce = 0; ce < tum.length; ce++) {
+      var t = tum[ce].tagName || '';
+      if (t.indexOf('-') > 0 && CUSTOM_ARAMA.test(t)) toplama_hedef(tum[ce], inShadow);
+    }
     // Kart havuzu üyeleri ayrıca taranır (etkileşimli olmasalar da).
     var ks = kartSelectorleri();
     if (ks) {
@@ -593,6 +662,8 @@ return (function (maxElements) {
   // arama kutusu dump'a hiç girmiyordu. Sinyal: type=search ya da
   // placeholder/aria-label/name'de ara|search|sorgu geçmesi.
   function aramaKutusu(el) {
+    var tg = (el.tagName || '').toLowerCase();
+    if (tg.indexOf('-') > 0 && /search|arama|sorgu|query/i.test(tg)) return true;
     var tip = (el.getAttribute('type') || '').toLowerCase();
     if (tip === 'search') return true;
     var ad = ((el.getAttribute('placeholder') || '') + ' ' +
@@ -612,7 +683,14 @@ return (function (maxElements) {
   function aramaSinyali(el) {
     if (aramaKutusu(el)) return true;
     var tag = (el.tagName || '').toLowerCase();
-    if (tag !== 'button' && tag !== 'div' && tag !== 'a' && tag !== 'span' && tag !== 'input') return false;
+    // Custom element ve TAG ADINDA arama anlamı taşıyan öğe: <fss-search-input>
+    // gibi öğelerin metni/aria-label'ı BOŞ olur (içi shadow/closed component).
+    // Bu durumda tek sinyal tag adıdır.
+    if (tag.indexOf('-') > 0 && /search|arama|sorgu|query/i.test(tag)) return true;
+    // Custom element (tag adında tire) de olabilir: arama kutusu
+    // <fss-search-input>, <x-search> gibi özel etiketlerle render edilir.
+    var customElement = tag.indexOf('-') > 0;
+    if (!customElement && tag !== 'button' && tag !== 'div' && tag !== 'a' && tag !== 'span' && tag !== 'input') return false;
     // Sinyal kaynakları DİKKATLİ seçilir: href'e BAKILMAZ.
     // SPA anasayfası ölçümü: kampanya banner linkleri "/arama?promotions=..."
     // href'i taşıdığı için arama kutusu sanılıyor, ilk 6 slotu doldurup asıl
@@ -683,13 +761,52 @@ return (function (maxElements) {
     kalan_giris
   );
 
-  for (var n = 0; n < MAX && n < secilen.length; n++) {
+  // -------------------------------------------------------------------------
+  // BENZERSİZLİK SÜZGECİ — site bağımsız
+  // -------------------------------------------------------------------------
+  // Kurumsal/landing sayfalarında aynı bağlantı onlarca kez tekrarlanır
+  // (aynı "Aracını Tasarla" linki mobil+masaüstü menüsünde 9 kez). Ölçüm:
+  // 275 etkileşimli öğeli bir sayfada 186 benzersiz öğe vardı ve 40 slotu
+  // 2 linkin tekrarı doldurup arama kutusu/navigasyon dump'a hiç girmiyordu.
+  //
+  // Kural: aynı (görünen ad + href) imzasından en fazla TEKRAR_SINIRI kez
+  // gösterilir. Sınır sayfadaki gerçek çeşitliliğe göre ölçülür:
+  //   - çok benzersiz öğe varsa sınır 1 (her şey bir kez)
+  //   - az benzersiz öğe varsa sınır 2 (meşru tekrarlar korunur)
+  // Böylece hem menü çorbası hem de aşırı kırpma önlenir.
+  function imza(p) {
+    var e = p.el;
+    var ad = (e.innerText || e.value || e.getAttribute('aria-label') || e.getAttribute('placeholder') || '')
+             .replace(/\s+/g, ' ').trim().slice(0, 60);
+    var href = e.getAttribute ? (e.getAttribute('href') || '') : '';
+    return e.tagName + '|' + ad + '|' + href;
+  }
+
+  var benzersizSayi = {};
+  for (var bi = 0; bi < secilen.length; bi++) {
+    var si = imza(secilen[bi]);
+    benzersizSayi[si] = (benzersizSayi[si] || 0) + 1;
+  }
+  var benzersizToplam = Object.keys(benzersizSayi).length;
+  var TEKRAR_SINIRI = benzersizToplam >= MAX ? 1 : 2;
+
+  var gorulen = {};
+  var suzulmus = [];
+  for (var gi = 0; gi < secilen.length; gi++) {
+    var sig = imza(secilen[gi]);
+    var kac = gorulen[sig] || 0;
+    if (kac >= TEKRAR_SINIRI) continue;
+    gorulen[sig] = kac + 1;
+    suzulmus.push(secilen[gi]);
+  }
+
+  for (var n = 0; n < MAX && n < suzulmus.length; n++) {
     var ref = 'e' + (n + 1);
-    var el = secilen[n].el;
+    var el = suzulmus[n].el;
     el.setAttribute('data-sl-ref', ref);
     var d = describe(el);
     d.ref = ref;
-    d.shadow = !!secilen[n].shadow;
+    d.shadow = !!suzulmus[n].shadow;
     items.push(d);
   }
 
