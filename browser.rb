@@ -329,13 +329,23 @@ class SelenitBrowser
                "açıp (BROWSER_MODE=existing) aynı oturuma bağlanmak gerekir."
       end
     end
+    # HATA SAYFASI (404 vb.) AÇIKÇA BİLDİRİLİR.
+    # Ölçüm: model kendi uydurduğu bir URL'ye gitti, 404 sayfası geldi ama
+    # dump normal göründüğü için devam etti; eski ref'lerle 4 adım boşa yaktı.
+    # 404 sayfalarında header/nav gerçek görünür, bu yüzden döküm tek başına
+    # yanıltıcıdır — açık uyarı şart.
+    if hata_sayfasi?
+      note += "UYARI (navigate): BU BİR HATA SAYFASI (404 / sayfa bulunamadı) — #{target}\n" \
+              "Bu sayfadaki bağlantılar ve ref'ler hedef içeriğe ait DEĞİLDİR. " \
+              "URL'yi kendin uydurma; hedefe gitmek için sayfadaki mevcut bağlantıları kullan, " \
+              "arama kutusu varsa onu kullan ya da görevi bu yolla başarısız say.\n"
+    end
     note + snapshot_text(header: true)
   rescue Policy::Denied => e
     "ENGELLENDİ: #{e.message}"
   rescue StandardError => e
     error("navigate", e)
   end
-
   # Eylem sonrası sayfa durumu: URL + metin uzunluğu + metin karması.
   # Döngü koruması "aynı çağrı gerçekten bir şey değiştirdi mi?" sorusunu
   # buna bakarak yanıtlar (aynı "+" düğmesine 4 kez basmak meşrudur).
@@ -1819,6 +1829,11 @@ class SelenitBrowser
              driver.execute_script("return document.readyState") == "complete"
             raise Selenium::WebDriver::Error::TimeoutError,
                   "seçici DOM'da hiç bulunmadı (#{hunts.round(1)} sn'de, sayfa yüklü): #{ref || selector} — " \
+                  # Ref verilmişse ve DOM'da hiç yoksa en olası neden: sayfa bir ara \
+                  # değişti (navigate/404) ve ref ESKİ sayfaya ait. Model bunu \
+                  # bilmezse aynı ref'i sırayla deneyip adımları boşa yakar \
+                  # (ölçüm: e17/e19 dört kez denendi). \
+                  "#{ref.to_s =~ /\Ae\d+\z/ ? "Bu ref ESKİ bir snapshot'a ait olabilir (sayfa değişmiş ya da 404'e düşmüş). ÖNCE browser_snapshot çağır ve GÜNCEL ref'leri kullan; aynı ref'i tekrar deneme. " : ''}" \
                   "seçiciyi doğrula (browser_snapshot / browser_find) veya BROWSER_MCP_FAILFAST'i büyüt"
           end
           false
