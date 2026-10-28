@@ -221,7 +221,23 @@ return (function (maxElements) {
         var etiket = name;
         if (aramaIsareti(el)) etiket = 'ARAMA KUTUSU: ' + etiket;
         // Kapalı ama etkileşimli öğe: model önce üzerine gelmeli/tıklamalı.
-        if (kapali && etiket) etiket = etiket + ' [KAPALI — önce tıkla/hover]';
+        // Kapalı öğe için modeli DOĞRU eyleme yönlendir.
+        // Ölçüm: bir kurumsal sitede arama kutusu <fss-search-input> içinde
+        // closed-shadow DOM kullanıyor; programatik tıklama (Selenium click)
+        // bile açmıyor, yalnızca gerçek fare ile açılıyor. Model bunu bilmezse
+        // aynı ref'e 3 kez tıklayıp döngüye giriyor ve görev ölüyor.
+        if (kapali && etiket) {
+          var kilitli = false;
+          try {
+            var sr = el.shadowRoot;
+            var ct2 = (el.tagName || '').toLowerCase();
+            // Custom element + shadowRoot yok → büyük olasılıkla closed shadow.
+            kilitli = ct2.indexOf('-') > 0 && !sr;
+          } catch (e) { kilitli = false; }
+          etiket = etiket + (kilitli
+            ? ' [KAPALI/ERİŞİLEMEZ — tıklama çalışmayabilir, alternatif yol kullan]'
+            : ' [KAPALI — önce tıkla/hover]');
+        }
         return etiket;
       })(),
       href: el.getAttribute('href') || el.getAttribute('src') || ''

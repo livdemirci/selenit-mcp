@@ -1834,6 +1834,33 @@ class SelenitBrowser
               "veya browser_snapshot ile güncel ref'i al."
       end
 
+      # ÖNEMLİ AYRIM: öğe VAR ama tıklanamıyor mu, yoksa HİÇ yok mu?
+      # Ölçüm: bir kurumsal sitede model var olan bir ref'e 3 kez tıkladı ve
+      # her seferinde "bulunamadı veya clickable değil" aldı; ikisini ayırt
+      # edemediği için aynı çağrıyı tekrarlayıp döngüye girdi.
+      # Burada öğe bulunabiliyorsa modeli DOĞRU alternatife yönlendir.
+      mevcut = begin
+        find_element_once(ref, selector, filter_text)
+      rescue StandardError
+        nil
+      end
+
+      if mevcut
+        durum = begin
+          "görünür=#{mevcut.displayed?} etkin=#{mevcut.enabled?} " \
+            "boyut=#{mevcut.size.width.to_i}x#{mevcut.size.height.to_i}"
+        rescue StandardError
+          "durum okunamadı"
+        end
+        raise Selenium::WebDriver::Error::TimeoutError,
+              "ÖĞE VAR AMA TIKLANAMIYOR (#{ref || selector}) — #{durum}. " \
+              "Bu genellikle öğenin kapalı bir menü/overlay içinde olması ya da " \
+              "özel bir web bileşeninin (closed shadow DOM) açılması gerektiği anlamına gelir. " \
+              "AYNI REF'E TEKRAR TIKLAMA. Bunun yerine: (1) menüyü açan üst öğeye tıkla, " \
+              "(2) sayfada aynı hedefe giden doğrudan bir bağlantı ara (browser_find ile), " \
+              "(3) hedefe URL üzerinden git, (4) hiçbiri yoksa bu yolu başarısız say ve görevi cevapla."
+      end
+
       raise
     end
     element
