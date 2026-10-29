@@ -12,7 +12,7 @@ require_relative "tasks"
 
 LM_STUDIO = ENV["LM_STUDIO_URL"] || "http://127.0.0.1:1234"
 MODEL = ENV["BENCH_MODEL"] || "google/gemma-4-e4b"
-MAX_STEPS = (ENV["BENCH_MAX_STEPS"] || 26).to_i
+MAX_STEPS = (ENV["BENCH_MAX_STEPS"] || 26).to_i unless defined?(MAX_STEPS)
 KOSUM = (ENV["PROBE"] || 1).to_i
 
 # --- hepsi görevi (tasks.rb'den birebir; prompt aynı metin) ---------------
@@ -88,6 +88,18 @@ class PwClient
     initialize_session
   end
 
+  # Görev ölçütü (tasks.rb) iki primitife dayanır: browser_evaluate (JS) ve
+  # tarayıcı kontrolü. Playwright MCP'de JS aracının adı sürümle değişiyor
+  # (browser_evaluate / browser_evaluate_function); kontrol aracı da
+  # browser_evaluate tarafından yapılabiliyorsa aynı ölçüt kullanılabilir.
+  # Hangisi yoksa onu gösteren net bir hata ver: sessizce FAIL sayma.
+  def capability_check
+    adlar = tools.map { |t| t["name"] }
+    eksik = []
+    eksik << "browser_evaluate" unless adlar.include?("browser_evaluate")
+    eksik
+  end
+
   def initialize_session
     request("initialize", { protocolVersion: "2024-11-05", capabilities: {},
                             clientInfo: { name: "pw-bench", version: "0" } })
@@ -98,9 +110,24 @@ class PwClient
     request("tools/list", {})["tools"]
   end
 
+  # Araç argüman adları iki MCP'de aynı tutulmalı ki kıyas araç yüzeyi
+  # farkından değil, aracın davranışından gelsin. Playwright MCP'de metin
+  # yazma aracı {element, text, submit} alır; selenit {ref, text, submit}
+  # alır. Parametre ADI farkı (ref ↔ element) burada köprülenir.
   def call(name, args)
-    result = request("tools/call", { name: name, arguments: args })
-    (result.dig("content") || []).filter_map { |c| c["text"] if c["type"] == "text" }.join("\n")
+    gercek = args.dup
+    # browser_type: selenit {ref|selector, text, submit}; Playwright MCP
+    # {element, text, submit}. Yalnızca parametre ADI eşlenir, anlamı aynı kalır.
+    if name == "browser_type" && gercek["ref"] && !gercek["element"]
+      gercek["element"] = gercek.delete("ref")
+    end
+    # browser_evaluate: model selenit imzasını {"script" => ...} kullanır.
+    # Playwright MCP {"function" => "() => ..."} bekler ve sonucu metne gömer;
+    # çeviriyi PwClient#evaluate yapar.
+    return evaluate(args["script"]) if name == "browser_evaluate" && args["script"]
+
+    sonuc = request("tools/call", { name: name, arguments: gercek })
+    (sonuc.dig("content") || []).filter_map { |c| c["text"] if c["type"] == "text" }.join("\n")
   end
 
   def request(method, params)
@@ -122,13 +149,60 @@ class PwClient
     @stdout.close rescue nil
     @wait.kill rescue nil
   end
+
+  # tasks.rb ÖLÇÜTLERİ mcp.call("browser_evaluate", {"script" => "return X"})
+  # biçiminde yazılmıştır. Playwright MCP'nin browser_evaluate'ü ise
+  # {"function" => "() => ..."} bekler ve dönen değeri metne gömer.
+  # Çeviri BURADA yapılır; modelin kendi araç çağrıları ASLA çevrilmez,
+  # yoksa iki aracın araç yüzeyi kıyaslaması bozulur (sadece ölçüt eşitlenir).
+  def evaluate(script)
+    s = script.strip
+    fn = if s.start_with?("return ")
+           "() => (#{s.sub(/\Areturn\s+/, '')})"
+         else
+           "() => { #{s} }"
+         end
+    # Playwright MCP sonucu metne gömer: '### Result\n "42"\n ### Ran Playwright code'.
+    # Tırnaklar ve yeni satır içindeki kaçışlar çözülür ki ölçüt kodu
+    # selenit'te gördüğü ham değeri görsün.
+    ham = call("browser_evaluate", { function: fn }).to_s
+    satir = ham[/Result\s*\n\s*(.*)/, 1].to_s.strip
+    if satir.start_with?('"') && satir.end_with?('"')
+      begin
+        JSON.parse(satir)
+      rescue JSON::ParserError
+        satir
+      end
+    else
+      satir
+    end
+  end
+
+  def call(name, args)
+    result = request("tools/call", { name: name, arguments: args })
+    (result.dig("content") || []).filter_map { |c| c["text"] if c["type"] == "text" }.join("\n")
+  end
 end
 
 def run_one(i, llm, pw, tools)
   started = Time.now
+  # Ölçüt tasks.rb'den geldiği için "mcp" olarak, sadece ölçüt JS'ini çeviren
+  # bir sarmalayıcı verilir; aksi halde Playwright MCP'ye MCP'de olmayan
+  # {"script": ...} imzası gider ve ölçüt sessizce false döner.
+  judge = Object.new
+  judge.instance_variable_set(:@mcp, pw)
+  def judge.call(name, args)
+    if name == "browser_evaluate" && args["script"]
+      return @mcp.evaluate(args["script"])
+    end
+    @mcp.call(name, args)
+  end
   messages = [
     { role: "system", content: PW_SYSTEM_PROMPT },
-    { role: "user", content: HEPSI[:prompt].respond_to?(:call) ? HEPSI[:prompt].call : HEPSI[:prompt] }
+    # Prompt her koşumda TAZE üretilmeli: lambda, hedef/filtre değerlerini
+  # çalışma anında ENV'den okur. (Tek seferde donduırmak, çoklu hedef koşumunda
+  # ikinci hedefe birincinin adresini gönderiyordu.)
+  { role: "user", content: HEPSI[:prompt].respond_to?(:call) ? HEPSI[:prompt].call : HEPSI[:prompt] }
   ]
   trace = []
   answer = nil
@@ -180,7 +254,7 @@ def run_one(i, llm, pw, tools)
   passed =
     if HEPSI[:check]
       begin
-        HEPSI[:check].call(pw, answer.to_s) ? true : false
+        HEPSI[:check].call(judge, answer.to_s) ? true : false
       rescue StandardError
         false
       end
@@ -194,30 +268,44 @@ def run_one(i, llm, pw, tools)
   }
 end
 
-results = []
-llm = Llm.new(MODEL)
-pw = nil
-KOSUM.times do |i|
-  print "PW koşum #{i + 1}/#{KOSUM} ... "
-  pw = PwClient.new
-  tools = pw.tools
-  r = run_one(i, llm, pw, tools)
-  pw&.stop
-  puts(r[:pass] ? "PASS (#{r[:adim]} adım, #{r[:sure]}s)" : "FAIL (#{r[:adim]} adım, #{r[:sure]}s)")
-  results << r
-rescue StandardError => e
-  pw&.stop
-  puts "HATA: #{e.class}: #{e.message.lines.first}"
-  results << { pass: false, adim: 0, sure: 0, answer: "", son_url: "", trace: ["kurulum hatası: #{e.message}"], arac_gecis: [] }
-end
+# --- giriş noktası ---------------------------------------------------------
+# Dosya require edildiğinde (ör. ölçüt sarmalayıcısını test etmek için) koşum
+# başlamamalı: yalnızca doğrudan çalıştırıldığında koşar.
+if $PROGRAM_NAME == __FILE__
+  results = []
+  llm = Llm.new(MODEL)
+  pw = nil
+  KOSUM.times do |i|
+    print "PW koşum #{i + 1}/#{KOSUM} ... "
+    pw = PwClient.new
+    tools = pw.tools
+    eksik = pw.capability_check
+    unless eksik.empty?
+      pw.stop
+      puts "KURULUM HATASI: Playwright MCP'de eksik araç: #{eksik.join(', ')} — araç listesi:"
+      puts tools.map { |t| "  - #{t['name']}" }.join("\n")
+      exit 2
+    end
+    r = run_one(i, llm, pw, tools)
+    pw&.stop
+    puts(r[:pass] ? "PASS (#{r[:adim]} adım, #{r[:sure]}s)" : "FAIL (#{r[:adim]} adım, #{r[:sure]}s)")
+    results << r
+  rescue StandardError => e
+    pw&.stop
+    puts "HATA: #{e.class}: #{e.message.lines.first}"
+    results << { pass: false, adim: 0, sure: 0, answer: "", son_url: "", trace: ["kurulum hatası: #{e.message}"], arac_gecis: [] }
+  end
 
-puts
-gecmis = results.count { |r| r[:pass] }
-puts "SONUÇ: #{gecmis}/#{KOSUM} geçti | ort adım: #{(results.sum { |r| r[:adim] }) / KOSUM} | ort süre: #{(results.sum { |r| r[:sure] }) / KOSUM}s"
-results.each_with_index do |r, i|
-  puts "--- koşum #{i + 1} #{r[:pass] ? 'PASS' : 'FAIL'}"
-  puts "    cevap: #{r[:answer].gsub("\n", ' ')}" unless r[:answer].empty?
-  r[:trace].last(6).each { |l| puts "    #{l}" }
+  puts
+  gecmis = results.count { |r| r[:pass] }
+  puts "SONUÇ: #{gecmis}/#{KOSUM} geçti | ort adım: #{(results.sum { |r| r[:adim] }) / KOSUM} | ort süre: #{(results.sum { |r| r[:sure] }) / KOSUM}s"
+  results.each_with_index do |r, i|
+    puts "--- koşum #{i + 1} #{r[:pass] ? 'PASS' : 'FAIL'}"
+    puts "    cevap: #{r[:answer].gsub("\n", ' ')}" unless r[:answer].empty?
+    r[:trace].last(6).each { |l| puts "    #{l}" }
+  end
+  # Dosya adı modele göre: claude ile gemma koşumları birbirini ezmesin.
+  etiket = ENV["BENCH_TASK"] || "sitenotr"
+  File.write(File.expand_path("artifacts/pw-bench-#{etiket}-#{MODEL.gsub(/[^a-z0-9]+/i, '-')}.json", __dir__),
+             JSON.pretty_generate({ model: MODEL, task: etiket, kosum: KOSUM, results: results }))
 end
-File.write(File.expand_path("artifacts/pw-bench-hepsi.json", __dir__),
-           JSON.pretty_generate({ model: MODEL, kosum: KOSUM, results: results }))

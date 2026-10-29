@@ -40,5 +40,8 @@
   "os": [
     "darwin",
     "linux"
-  ]
+  ],
+  "dependencies": {
+    "ws": "^8.22.0"
+  }
 }

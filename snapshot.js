@@ -70,7 +70,28 @@ return (function (maxElements) {
     return { boyut: boyut, gizli: kendiGizli || ataGizli, disabled: !!el.disabled };
   }
 
+  // Ölçüldü (2026-10-29): bir ilan sitesinde "Fiyat" filtresi açıldıktan sonra
+  // iki metin alanı (placeholder Min/Max) hiçbir dump'a girmiyordu; alanlar
+  // görünür, boyutlu ve disabled DEĞİLDİ. Neden: alanın ATALARINDAN biri
+  // role=dialog/aria-modal taşıyordu ve "açık modal varsa yalnızca modalı tara"
+  // kuralı tarama kökünü o kutuya daraltıyordu. Oysa metin alanı form
+  // denetimidir: her zaman listelenmeli. Bu yüzden giriş alanları için
+  // görünürlük kuralı ayrı: yalnızca boyut + disabled bakılır, atalardaki
+  // gizlilik sinyali yok sayılır (Selenium zaten görünür olmayan alana
+  // yazmayı reddedip net hata verir; yanlış eleme ise görevi sessizce öldürür).
+  function giris_gorunur(el) {
+    if (el.disabled) return false;
+    var r = el.getBoundingClientRect();
+    if (!(r.width > 0 && r.height > 0)) return false;
+    var st = window.getComputedStyle(el);
+    return !(st.display === 'none' || st.visibility === 'hidden');
+  }
+
   function visible(el) {
+    var t = (el.tagName || '').toLowerCase();
+    if (t === 'input' || t === 'textarea' || t === 'select') {
+      if (giris_gorunur(el)) return true;
+    }
     var v = gorunurluk(el);
     if (v.disabled) return false;
     if (v.boyut && !v.gizli) return true;

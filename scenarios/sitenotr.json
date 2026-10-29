@@ -1,28 +1,27 @@
 {
   "task": "sitenotr",
   "desc": "Site-nötr: arama yap, sonuç sayfasındaki ilk ürünün adını ve fiyatını oku",
-  "recorded_at": "2026-10-28T23:30:31+0300",
+  "recorded_at": "2026-10-29T14:28:50+0300",
   "model": "google/gemma-4-e4b",
-  "answer": "ürün | Anker SoundCore Liberty 5 ANC TWS Kulak İçi Bluetooth Kulaklık, fiyat | 4.699,00 TL",
-  "final_url": "https://www.akakce.com/arama/?q=kulaklik",
+  "answer": "ürün | Aktif'ten Akçay'da🛑acil Satılık🛑 Özel Ta\nfiyat | 6.750.000 TL",
+  "final_url": "https://www.hepsiemlak.com/satilik/daire",
   "assert_js": null,
   "assert_value": null,
   "steps": [
     {
       "tool": "browser_navigate",
       "args": {
-        "url": "https://www.akakce.com"
+        "url": "https://www.hepsiemlak.com"
       },
       "selector": null
     },
     {
       "tool": "browser_type",
       "args": {
-        "ref": "e1",
-        "submit": true,
-        "text": "kulaklik"
+        "ref": "e7",
+        "text": "satılık daire"
       },
-      "selector": "#q"
+      "selector": "#search-input"
     }
   ]
 }

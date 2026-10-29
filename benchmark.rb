@@ -197,30 +197,45 @@ selected = ARGV.empty? ? TASKS.keys : ARGV
 File.write("/tmp/agent_upload.txt", "ajan test dosyasi\n") rescue nil
 llm = Llm.new(MODEL)
 
-probe = McpClient.new
+probe = McpClient.new(port: "19419")
 tool_count = probe.tools.size
 probe.stop
 
 puts "Model: #{MODEL} | MCP port: #{ENV['BENCH_MCP_PORT'] || '19420'} | araç: #{tool_count} | görev: #{selected.join(', ')}"
 puts
 
-results = selected.map do |key|
+results = []
+gorev_sira = -1
+selected.each do |key|
   spec = TASKS[key] or next
+  gorev_sira += 1
   print "#{key} (#{spec[:desc]}) ... "
   mcp = nil
   r = begin
     # Her görev taze MCP süreci + taze Selenium oturumu kullanır (takılan çağrı diğerlerini zehirlemez).
-    mcp = McpClient.new
+    # DİKKAT (ölçüldü 2026-10-29): aynı portta ikinci bir sunucu açmak Chrome
+    # profil kilidi yüzünden ilk sürecin tarayıcısını da bozuyor; belirti
+    # "private method 'click' called for an instance of SelenitBrowser" gibi
+    # ALAKASIZ bir hata. Bu yüzden görev başına port ve profil AYRI.
+    # Port, görev sayacından türetilir: probe ("19419") ve görevler aynı anda
+    # aynı portu kullanırsa ikinci süreç Chrome profilini kilitleyip ilkinin
+    # tarayıcısını düşürüyor (belirti: "private method 'click'" gibi alakasız hata).
+
+    base = ENV["BENCH_MCP_PORT"].to_i
+    base = 19_420 if base.zero?
+    # Not: `results` burada henüz tanımsız (döngü sürüyor); sayaç ayrı tutulur.
+    port = base + gorev_sira
+    mcp = McpClient.new(port: port.to_s)
     run_task(key, spec, mcp, llm, mcp.tools)
   rescue StandardError => e
     { key: key, desc: spec[:desc], passed: false, steps: 0, seconds: 0, answer: "",
-      trace: ["HATA: #{e.class}: #{e.message.to_s[0, 160]}"] }
+      trace: ["HATA: #{e.class}: #{e.message.to_s[0, 160]}", "NEREDE: #{e.backtrace.first(3).join(' | ')}"] }
   ensure
     mcp&.stop
   end
   puts(r[:passed] ? "GEÇTİ (#{r[:steps]} adım, #{r[:seconds]}s)" : "KALDI (#{r[:steps]} adım, #{r[:seconds]}s)")
-  r
-end.compact
+  results << r
+end
 
 puts
 results.each do |r|

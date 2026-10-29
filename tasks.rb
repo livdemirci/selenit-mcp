@@ -299,5 +299,101 @@ TASKS = {
       # Şablon cevabı ("ürün | fiyat") zaten fiyat dışı metin bırakmaz.
       sade.length >= 5
     end
+  },
+
+  # ---------------------------------------------------------------------------
+  # AŞAMA-2 / S2 — SIRALAMA + FİYAT ARALIĞI + LİSTE→DETAY (ilan no + fiyat).
+  # Ölçtüğü üç yetenek:
+  #   1) Özel açılır menü (button + role=option): "Ucuzdan Pahalıya" seçimi.
+  #   2) Aralık filtresi: iki metin alanı (min/max) + uygula düğmesi.
+  #   3) Liste → detay geçişi: detay sayfasında ilan no + fiyatı AYNI yerden okuma
+  #      ve cevabın gerçekten o ilana ait olması (uydurma no yakalanır).
+  # Site-nötr: hedef ve filtre değerleri ENV'den; repoda site adı/seçici yok.
+  #   SELENIT_TARGET_URL=... SELENIT_FILTER_MIN=... SELENIT_FILTER_MAX=... \
+  #   SELENIT_SORT_LABEL="Ucuzdan Pahalıya" ruby benchmark.rb filtre2
+  # ---------------------------------------------------------------------------
+  "filtre2" => {
+    desc: "Site-nötr: sırala + fiyat aralığı filtrele, ilk ilanın no ve fiyatını getir",
+    prompt: lambda do
+      hedef = ENV["SELENIT_TARGET_URL"].to_s
+      raise "SELENIT_TARGET_URL tanımlı olmalı" if hedef.empty?
+
+      siralama = ENV["SELENIT_SORT_LABEL"].to_s
+      min = ENV["SELENIT_FILTER_MIN"].to_s
+      max = ENV["SELENIT_FILTER_MAX"].to_s
+      aralik = (min.empty? && max.empty?) ? "" : "#{min} - #{max}"
+
+      adimlar = []
+      # Her adım tek cümle: model adım adım ilerlesin, atlamasın.
+      adimlar << "1) Sıralama kutusunu aç (üstünde 'Sıralama' veya 'Önerilen' yazar) " \
+                 "ve açılan listeden '#{siralama}' seçeneğini seç." unless siralama.empty?
+      adimlar << "#{adimlar.size + 1}) Fiyat filtresini aç (üstünde 'Fiyat' yazar). " \
+                 "Açılan panelde iki metin alanı olur: en az #{min}, en çok #{max}. " \
+                 "Bu alanlara değerleri yaz, sonra 'Filtrele' düğmesine bas." unless aralik.empty?
+      adimlar << "#{adimlar.size + 1}) Sonuç listesinde SPONSORLU/REKLAM kartlarını atla " \
+                 "(kart üstünde 'Sponsorlu'/'Reklam' yazar ya da filtreye uymaz). " \
+                 "ORGANİK ilk ilanın başlığına tıkla ve detay sayfasını aç."
+      adimlar << "#{adimlar.size + 1}) Detay sayfası açılınca DOM tamamen değişir; eski ref'ler " \
+                 "geçersizdir. Yeniden browser_snapshot al. İlan numarasını ve fiyatı AYNI " \
+                 "ilanın içinden oku; iki değeri farklı yerlerden toplama."
+      adimlar << "#{adimlar.size + 1}) Fiyatı göremiyorsan 'fiyat yok' yaz, UYDURMA. " \
+                 "İlan numarasını göremiyorsan 'ilan no yok' yaz."
+
+      "Şu adrese git: #{hedef}\n" \
+      "#{adimlar.join("\n")}\n" \
+      "Son olarak cevabını TEK satırda tam olarak şu biçimde ver: " \
+      "'ilan | <ilan no veya ilan no yok> | <fiyat veya fiyat yok>'"
+    end,
+    # Ölçüt İKİ bağımsız sinyale bakar; ikisi de sayfadan gelir, cevaba güvenmez:
+    #   A) Filtre gerçekten uygulandı mı? (detay sayfasında min/max hâlâ taşınıyorsa)
+    #   B) Cevaptaki ilan no bu detay sayfasının no'su mu? (uydurma no kapatılır)
+    # Sayfa hiç no göstermiyorsa (bazı siteler no'yu yalnızca API'de tutar) B
+    # atlanır ve yalnızca biçim + fiyatın sayfada geçmesi aranır.
+    check: lambda do |mcp, answer|
+      a = answer.to_s
+      deger = lambda do |js|
+        begin
+          mcp.call("browser_evaluate", { "script" => js }).to_s.lines.first.to_s.strip
+        rescue StandardError
+          ""
+        end
+      end
+
+      fiyatli = a.match?(/\d[\d.,]*\s*(?:TL|₺|\$|€|£)/i) || a.match?(/(?:₺|\$|€|£)\s*\d[\d.,]*/)
+      no = a.scan(/\d{6,12}/).first
+
+      sayfa_no = deger.call(<<~JS)
+        var o = [];
+        o.push(location.href);
+        var t = document.body ? document.body.innerText : '';
+        var m = t.match(/\\b\\d{6,12}\\b/g) || [];
+        return o.concat(m).join(',');
+      JS
+      sayfa_url = deger.call("return location.href")
+
+      # A) Filtre URL'de ya da detay sayfasında taşınıyor mu? (değerler ENV'den)
+      min = ENV["SELENIT_FILTER_MIN"].to_s
+      max = ENV["SELENIT_FILTER_MAX"].to_s
+      filtre_var = [min, max].reject(&:empty?).all? { |v| sayfa_no.include?(v) || sayfa_url.include?(v) }
+      # Detay sayfasına geçildiyse filtre querystring'de kalır; cevap biçimi +
+      # ilan no pinlemesi asıl kanıt. Filtre hiç uygulanmadıysa FAIL.
+      next false unless filtre_var
+      next false unless fiyatli
+
+      # B) Pinleme: cevaptaki no bu sayfanın no'su mu?
+      adaylar = sayfa_no.scan(/\d{6,12}/)
+      next true if adaylar.empty? # sayfa no vermiyor: biçim + filtre yeterli
+      next false if no.nil?
+
+      # C) Cevaptaki fiyat da sayfada geçmeli: model başka bir ilanın fiyatını
+      # yazarsa (ya da uydurursa) burada yakalanır.
+      cevap_fiyat = a.scan(/\d[\d.,]*/).max_by(&:length).to_s
+      sayfa_metni = deger.call("return document.body ? document.body.innerText : ''")
+      fiyat_dogru = !cevap_fiyat.empty? && sayfa_metni.delete(" ").include?(cevap_fiyat.gsub(/\.(?=\d{3}\b)/, "")) ||
+                    sayfa_metni.include?(cevap_fiyat)
+      next false unless fiyat_dogru
+
+      adaylar.include?(no)
+    end
   }
 }.freeze
