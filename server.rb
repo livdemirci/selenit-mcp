@@ -97,11 +97,19 @@ module Tools
     },
     {
       name: "browser_find",
-      description: "Sayfada metne göre öğe bul, tıklanabilir ref döndür (uzun sayfalar için).",
+      description: "Sayfada öğe bul ve tıklanabilir ref döndür. İki mod: " \
+                   "(1) text ile ZATEN görünen metni ara — bu bir arama MOTORU DEĞİL, site araması YAPMAZ; " \
+                   "(2) role + name ile ARIA erişilebilirlik semantiğinden hedefle " \
+                   "(ör. role='searchbox', role='button' name='Ara') — en sağlam yol, site yapısı değişse de çalışır. " \
+                   "Site içinde arama yapmak için arama kutusuna browser_type ile yaz (submit:true).",
       inputSchema: {
         type: "object",
-        properties: { text: { type: "string" } },
-        required: ["text"]
+        properties: {
+          text: { type: "string", description: "Görünür metin parçası (role verilmezse gerekli)" },
+          role: { type: "string", description: "ARIA rolü: link, button, textbox, searchbox, combobox, checkbox, heading, listitem, img, navigation" },
+          name: { type: "string", description: "Erişilebilir ad (aria-label / label / metin) — role ile birlikte kullanılır" }
+        },
+        required: []
       }
     },
     {
@@ -397,7 +405,7 @@ def dispatch_tool(name, args)
   when "browser_snapshot"   then browser.snapshot
   when "browser_dom"        then browser.dom(q: args["q"], limit: args["limit"])
   when "browser_click"      then browser.click(ref: args["ref"], selector: args["selector"], text: args["text"], confirm: args["confirm"])
-  when "browser_find"       then browser.find(args["text"])
+  when "browser_find"       then browser.find(args["text"], role: args["role"], name: args["name"])
   when "browser_read"       then browser.read(max: args["max"] || 1500)
   when "browser_select"     then browser.select(ref: args["ref"], selector: args["selector"], value: args["value"], label: args["label"])
   when "browser_alert"      then browser.alert(action: args["action"] || "accept")

@@ -1,27 +1,28 @@
 {
   "task": "sitenotr",
   "desc": "Site-nötr: arama yap, sonuç sayfasındaki ilk ürünün adını ve fiyatını oku",
-  "recorded_at": "2026-10-29T14:28:50+0300",
+  "recorded_at": "2026-10-29T16:20:06+0300",
   "model": "google/gemma-4-e4b",
-  "answer": "ürün | Aktif'ten Akçay'da🛑acil Satılık🛑 Özel Ta\nfiyat | 6.750.000 TL",
-  "final_url": "https://www.hepsiemlak.com/satilik/daire",
+  "answer": "ürün | fiyat\nXiaomi Redmi Buds 6 Play - Siyah Kulakiçi Kulaklık TWS (Xiaomi Türkiye Garantili) | 769 TL",
+  "final_url": "https://www.hepsiburada.com/ara?q=kulakl%C4%B1k",
   "assert_js": null,
   "assert_value": null,
   "steps": [
     {
       "tool": "browser_navigate",
       "args": {
-        "url": "https://www.hepsiemlak.com"
+        "url": "https://www.hepsiburada.com"
       },
       "selector": null
     },
     {
       "tool": "browser_type",
       "args": {
-        "ref": "e7",
-        "text": "satılık daire"
+        "ref": "e1",
+        "submit": true,
+        "text": "kulaklık"
       },
-      "selector": "#search-input"
+      "selector": "input[aria-label=\"Site içinde ara\"]"
     }
   ]
 }

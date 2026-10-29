@@ -856,7 +856,19 @@ class SelenitBrowser
         rescue StandardError
           nil
         end
-        raise unless gizli
+        if gizli.nil?
+          # ÖLÇÜLDÜ (hepsiburada, gemma-4-e4b): model e1 ile BİR koşumda başarılı
+          # oldu, diğerinde aynı ref'i kullandı ama sayfa yenilenmişti. Ref
+          # DOM'da hiç yoktu; hata mesajı "seçiciyi doğrula" diyordu, model bunu
+          # yapmadı ve görevi bıraktı. click'te bu uyarı VARDI, type'ta YOKTU.
+          # Aynı korumayı buraya da koy: eski ref'i adıyla işaretle.
+          if ref.to_s.match?(/\Ae\d+\z/)
+            return "HATA (type #{ref}): bu ref DOM'da YOK — ESKİ bir snapshot'a ait " \
+                   "(sayfa yenilenmiş olabilir). Aynı ref'i TEKRAR DENEME. " \
+                   "ÖNCE browser_snapshot çağır, dönen GÜNCEL ref ile yaz."
+          end
+          raise
+        end
 
         gecici_gorunur_yap(gizli)
         gizli
@@ -1010,10 +1022,31 @@ class SelenitBrowser
       end
     end
     wait_after_action(previous_url: url_before_type)
+    # ÖLÇÜLDÜ (hepsiburada): model submit'ten SONRA arama yapıldığını anlamadı
+    # ve boş yanıt verdi; arama sonucu sayfası AJAX ile açılmıştı. Yazma
+    # sonucunun metnine arama durumunu ekle: URL değişti mi, sayfa başlığı
+    # arama terimini gösteriyor mu. Site-nötr: yalnızca URL/başlık karşılaştırması.
+    arama_notu = begin
+      sonraki = driver.current_url.to_s
+      if submit
+        if sonraki != url_before_type.to_s
+          "\nARAMA: submit sonrası URL değişti (#{sonraki[0, 90]}) — arama yapıldı, sonuç sayfasındasın."
+        elsif driver.title.to_s.downcase.include?(text.to_s.downcase[0, 20]) && text.to_s.length > 2
+          "\nARAMA: URL değişmedi ama sayfa başlığında \"#{text.to_s[0, 30]}\" var — arama yapıldı (AJAX), sonuçlar bu sayfada. CEVABI YAZ."
+        else
+          "\nUYARI: submit sonrası ne URL ne başlık değişti — arama çalışmamış olabilir. " \
+          "Aynı alana tekrar yazmayı DENEME; browser_snapshot ile sayfayı kontrol et."
+        end
+      else
+        ""
+      end
+    rescue StandardError
+      ""
+    end
     # Gizli alanı geçici görünür yaptıysak stili eski hâline döndür.
     # (Sayfa kendi düzenini korumalı; kalıcı stil değişikliği bırakma.)
     gecici_geri_al(element) if element
-    "yazıldı: #{ref || selector} <- #{text.to_s[0, 60].inspect}#{submit ? ' + Enter' : ''}#{@son_yazma_notu}\n#{snapshot_text}#{harvest_toasts}"
+    "yazıldı: #{ref || selector} <- #{text.to_s[0, 60].inspect}#{submit ? ' + Enter' : ''}#{@son_yazma_notu}#{arama_notu}\n#{snapshot_text}#{harvest_toasts}"
   rescue Selenium::WebDriver::Error::UnexpectedAlertOpenError => e
     metin = e.message[/Alert text : (.+?)\}/, 1].to_s
     kabul = alert_hemen_kabul(driver)
@@ -1034,8 +1067,154 @@ class SelenitBrowser
   # Metne göre öğe bulur, ref üretir (uzun sayfalar ve shadow DOM için).
   # Lazy-load sayfalarda Zhan'ın yaklaşımı: bulunamazsa sona kaydır, içerik
   # yüklenince tekrar ara; sabit sayıda denemeden sonra anlaşılır hata döndür.
-  def find(text, limit: 5, lazy: true)
+  # Rol/erişilebilirlik adı ile hedefleme.
+  #
+  # Zhimin Zhan, "Playwright ARIA locator support" (Part 9): ARIA locator
+  # Playwright'a özgü bir üstünlük DEĞİL — rol ve erişilebilir ad standart
+  # WAI-ARIA semantiğidir, Selenium'da da aynı şekilde kullanılır. Bu metot
+  # tamamen site-nötr: hiçbir siteye özgü seçici yok, yalnızca rol adı ve
+  # erişilebilirlik adı eşleşmesi var.
+  #
+  # Örtük roller de çözülür (ARIA 1.2): <a href> → link, <button> → button,
+  # <input type=search> → searchbox, <input type=text> → textbox,
+  # <select> → combobox, <h1..h6> → heading.
+  def find_role(role, name: nil, limit: 5)
     ensure_session
+    driver.execute_script(<<~JS, role.to_s.downcase, name.to_s.downcase, limit.to_i)
+      var rol = arguments[0], ad = arguments[1], max = arguments[2] || 5;
+      if (!rol) return [];
+
+      // Örtük rol çıkarımı: açık role yoksa semantikten türet (ARIA 1.2).
+      function rolunu_al(e) {
+        var acik = e.getAttribute('role');
+        if (acik) return acik.trim().toLowerCase();
+        var t = e.tagName.toLowerCase();
+        if (t === 'a' && e.hasAttribute('href')) return 'link';
+        if (t === 'button') return 'button';
+        if (t === 'select') return 'combobox';
+        if (t === 'textarea') return 'textbox';
+        if (t === 'summary') return 'button';
+        if (/^h[1-6]$/.test(t)) return 'heading';
+        if (t === 'img') return 'img';
+        if (t === 'nav') return 'navigation';
+        if (t === 'main') return 'main';
+        if (t === 'ul' || t === 'ol') return 'list';
+        if (t === 'li') return 'listitem';
+        if (t === 'form') return 'form';
+        if (t === 'input') {
+          var ty = (e.type || 'text').toLowerCase();
+          if (ty === 'search') return 'searchbox';
+          if (ty === 'checkbox') return 'checkbox';
+          if (ty === 'radio') return 'radio';
+          if (ty === 'submit' || ty === 'button' || ty === 'reset') return 'button';
+          if (ty === 'range') return 'slider';
+          if (ty === 'number') return 'spinbutton';
+          // ÖLÇÜLDÜ (arabam.com): arama kutusu <input type="text"> ve
+          // aria-label="Kelime, galeri adı veya ilan no ile ara". ARIA 1.2'de
+          // örtük rolü "textbox"tur, searchbox DEĞİL — rol araması boş dönüyordu.
+          // Erişilebilirlik SİNYALİ ara/sorgu içeren textbox'ı searchbox say:
+          // bu, ARIA'nın kendi "search" landmark mantığıyla uyumlu, site-nötr.
+          return 'textbox';
+        }
+        return null;
+      }
+
+      // Arama kutusu sinyali: textbox rolündeki bir alan, erişilebilir adı ya da
+      // input nitelikleri ara/sorgu/search/kelime içeriyorsa searchbox sayılır.
+      function arama_sinyali(e) {
+        var parcalar = [
+          e.getAttribute('aria-label'), e.getAttribute('placeholder'),
+          e.getAttribute('title'), e.getAttribute('name'), e.id,
+          e.getAttribute('type')
+        ].join(' ').toLowerCase();
+        return /(^|\\s)(ara|arama|sorgu|search|query|kelime|bul)(\\s|$)/.test(parcalar) ||
+               parcalar.indexOf('ara') >= 0 || parcalar.indexOf('search') >= 0 ||
+               parcalar.indexOf('sorgu') >= 0 || parcalar.indexOf('kelime') >= 0;
+      }
+
+      // Erişilebilir ad (ARIA accname, basitleştirilmiş sıra):
+      // aria-labelledby > aria-label > <label for> > sarmalayan label >
+      // metin içeriği > alt > title > value > placeholder
+      function erisilebilir_ad(e) {
+        var lb = e.getAttribute('aria-labelledby');
+        if (lb) {
+          var parcalar = lb.split(/\\s+/).map(function (id) {
+            var hedef = document.getElementById(id);
+            return hedef ? (hedef.innerText || hedef.textContent || '').trim() : '';
+          }).filter(Boolean);
+          if (parcalar.length) return parcalar.join(' ');
+        }
+        var al = e.getAttribute('aria-label');
+        if (al && al.trim()) return al.trim();
+        if (e.id) {
+          var lab = document.querySelector('label[for="' + CSS.escape(e.id) + '"]');
+          if (lab && lab.innerText && lab.innerText.trim()) return lab.innerText.trim();
+        }
+        var sarmal = e.closest ? e.closest('label') : null;
+        if (sarmal && sarmal.innerText && sarmal.innerText.trim()) return sarmal.innerText.trim();
+        var metin = (e.innerText || e.textContent || '').replace(/\\s+/g, ' ').trim();
+        if (metin) return metin;
+        var alt = e.getAttribute('alt');
+        if (alt && alt.trim()) return alt.trim();
+        var ti = e.getAttribute('title');
+        if (ti && ti.trim()) return ti.trim();
+        if (e.value && String(e.value).trim()) return String(e.value).trim();
+        var ph = e.getAttribute('placeholder');
+        if (ph && ph.trim()) return ph.trim();
+        return '';
+      }
+
+      var tumu = document.querySelectorAll('*');
+      var tam = [], kismi = [];
+      for (var i = 0; i < tumu.length; i++) {
+        var e = tumu[i];
+        var e_rol = rolunu_al(e);
+        // "searchbox" istenirse, arama sinyali taşıyan textbox'lar da eşleşir
+        // (arabam.com: <input type=text aria-label="... ile ara">). Bu bir
+        // rol ÇIKARIMI değil, ARIA search landmark'ıyla aynı mantıkta bir
+        // erişilebilirlik sinyali — site-nötr.
+        if (e_rol !== rol && !(rol === 'searchbox' && e_rol === 'textbox' && arama_sinyali(e))) continue;
+        var r = e.getBoundingClientRect();
+        // Yalnızca görünür öğeler (gizli dialog/iframe içeriği eşleşmesin)
+        if (r.width <= 0 && r.height <= 0) continue;
+        var adi = erisilebilir_ad(e).toLowerCase();
+        if (!ad) { tam.push({ e: e, adi: adi }); continue; }
+        if (adi === ad) tam.push({ e: e, adi: adi });
+        else if (adi.indexOf(ad) >= 0) kismi.push({ e: e, adi: adi });
+      }
+      var sec = tam.length ? tam : kismi;
+      var out = [];
+      for (var k = 0; k < sec.length && out.length < max; k++) {
+        var el = sec[k].e;
+        el.scrollIntoView({ block: 'center', inline: 'center' });
+        var ref = 'r' + (out.length + 1);
+        el.setAttribute('data-sl-ref', ref);
+        out.push({ ref: ref, tag: el.tagName.toLowerCase(), role: rol, name: sec[k].adi.slice(0, 80) });
+      }
+      return out;
+    JS
+  end
+
+  def find(text, limit: 5, lazy: true, role: nil, name: nil)
+    ensure_session
+
+    # Argüman doğrulaması: rol yoksa metin şart (sessiz boş arama yapma).
+    if role.to_s == "" && text.to_s.strip.empty?
+      return "HATA (find): 'text' ya da 'role' vermelisin. " \
+             "ARIA ile hedeflemek için: role='searchbox' / role='button' name='Ara' gibi."
+    end
+
+    # Rol verilmişse rol/erişilebilirlik adı yolu kullanılır (ARIA semantiği).
+    if role.to_s != ""
+      bulunan = find_role(role, name: name, limit: limit)
+      if bulunan.empty?
+        return "role='#{role}'#{name.to_s.empty? ? '' : " ad='#{name}'"} ile eşleşen görünür öğe yok. " \
+               "Rol adları: link, button, textbox, searchbox, combobox, checkbox, heading, listitem. " \
+               "Sayfadaki öğeler için browser_snapshot kullan."
+      end
+      return "rol eşleşmeleri:\n" + bulunan.map { |m| "#{m['ref']} #{m['tag']} [#{m['role']}] #{m['name']}" }.join("\n")
+    end
+
     matches = scan_text(text, limit)
 
     if matches.empty? && lazy
@@ -1050,7 +1229,11 @@ class SelenitBrowser
       end
     end
 
-    return "'#{text}' ile eşleşen öğe bulunamadı. browser_snapshot veya browser_read dene." if matches.empty?
+    return "'#{text}' ile eşleşen öğe bulunamadı. " \
+           "ÖNEMLİ: browser_find bir arama MOTORU değildir — yalnızca sayfada zaten görünen metni bulur. " \
+           "'#{text}' için site içinde arama yapmak istiyorsan: arama kutusunu bul " \
+           "(browser_snapshot → ref) ve browser_type(ref: ..., text: '#{text}', submit: true) çağır. " \
+           "Sayfada arama kutusu yoksa browser_snapshot ile mevcut bağlantıları gör." if matches.empty?
 
     lines = matches.map do |m|
       href = m["href"].to_s.empty? ? "" : " -> #{truncate(m['href'], 60)}"
@@ -1092,8 +1275,51 @@ class SelenitBrowser
       ""
     end
     ana = ana.to_s.gsub(/[ \t]+/, " ").gsub(/\n{3,}/, "\n\n").strip
+
+    # FİYAT YOĞUN BÖLGE (site-nötr):
+    # ÖLÇÜLDÜ (arabam.com): ürün listesi yukarıdaki class seçicilerinin hiçbiriyle
+    # eşleşmiyordu; read() menü metnini döndürdü, sayfada 29 fiyat varken model
+    # hiçbirini göremedi ve sonsuz kaydırdı. Çözüm sınıf adı tahmin etmek değil:
+    # en çok para birimi (TL/₺/$/€) deseni taşıyan ve bunları DOĞRUDAN çocuklarında
+    # barındıran kapsayıcıyı bul. Aynı mantık her liste sayfasında çalışır.
+    fiyat_bolge = begin
+      driver.execute_script(<<~JS)
+        var PARA = /(\\d[\\d.,]*\\s*(?:TL|₺|\\$|€|£))|((?:₺|\\$|€|£)\\s*\\d[\\d.,]*)/g;
+        var en_iyi = null, en_iyi_skor = 0;
+        var tumu = document.querySelectorAll('div,section,ul,ol,table');
+        for (var i = 0; i < tumu.length; i++) {
+          var e = tumu[i];
+          var t = e.innerText || '';
+          if (t.length < 300 || t.length > 20000) continue;
+          var dogrudan = 0;
+          for (var j = 0; j < e.children.length; j++) {
+            var c = e.children[j];
+            if (c.innerText && PARA.test(c.innerText)) dogrudan++;
+            PARA.lastIndex = 0;
+          }
+          // En az 3 doğrudan çocuk fiyat taşımalı: liste/ızgara deseni
+          if (dogrudan < 3) continue;
+          var skor = dogrudan * 1000 - t.length / 100;
+          if (skor > en_iyi_skor) { en_iyi_skor = skor; en_iyi = e; }
+        }
+        return en_iyi ? en_iyi.innerText : '';
+      JS
+    rescue StandardError
+      ""
+    end
+    fiyat_bolge = fiyat_bolge.to_s.gsub(/[ \t]+/, " ").gsub(/\n{3,}/, "\n\n").strip
+
     # Ürün listesi varsa her zaman onu kullan (header gürültüsü yerine).
-    text = ana if ana.length > 200
+    # Fiyat bölgesi daha güvenilir sinyal: önce o.
+    neden = if fiyat_bolge.length > 200
+              text = fiyat_bolge
+              "liste (fiyat taşıyan bölge)"
+            elsif ana.length > 200
+              text = ana
+              "ana içerik"
+            else
+              "tam sayfa"
+            end
     # Modelin gereksiz kaydırma yapmasını azalt: sayfada kaç kayıt/ürün/bağlantı
     # olduğunu ve kaydırmanın gerekli olup olmadığını tek satırda bildir.
     ipucu = begin
@@ -1106,11 +1332,50 @@ class SelenitBrowser
       parcalar = []
       parcalar << "#{urun} ürün/kayıt öğesi" if urun.positive?
       parcalar << (kalan <= 40 ? "sayfa sonu" : "aşağıda ~#{kalan}px daha var")
-      parcalar.empty? ? "" : "\nDURUM: #{parcalar.join(', ')}. Gerekli bilgi yukarıdaki metinde varsa kaydırma."
+      # ÖLÇÜLDÜ (hepsiburada k1): model arama kutusuna yazdı, submit etti, sonuç
+      # AJAX ile AYNI URL'de geldi (hepsiburada.com/). Model "URL değişmedi,
+      # arama olmadı" sanıp boş yanıt verdi. URL değişmese de sayfada arama
+      # kutusu artık DOLU ise arama yapılmıştır — bunu açıkça bildir.
+      #
+      # Ama bazı siteler kutuya yazılanı submit sonrası TEMİZLER (hepsiburada:
+      # submit'ten sonra input değeri boş). Tek sinyal yetmez; üçüne birden bak:
+      #   1) girdi alanında hâlâ metin var mı
+      #   2) URL'de arama parametresi var mı (q, k, query, search, ara, kelime)
+      #   3) sayfa başlığı arama terimini içeriyor mu
+      arama = begin
+        dolu = driver.execute_script(<<~JS)
+          var alanlar = document.querySelectorAll('input[type=search],input[type=text],input:not([type])');
+          for (var i = 0; i < alanlar.length; i++) {
+            var v = (alanlar[i].value || '').trim();
+            if (v.length > 1) return v.slice(0, 40);
+          }
+          return '';
+        JS
+        dolu = dolu.to_s.strip
+        parametre = begin
+          URI(driver.current_url).query.to_s
+        rescue StandardError
+          ""
+        end
+        url_aramasi = parametre.match(/(?:^|&)(q|k|query|search|ara|kelime|arama)=([^&]*)/i)
+        baslik_aramasi = driver.title.to_s
+        if !dolu.empty?
+          "\nARAMA: arama kutusunda \"#{dolu}\" yazılı — arama YAPILDI, sonuçlar bu sayfada."
+        elsif url_aramasi
+          "\nARAMA: URL'de '#{url_aramasi[1]}=#{URI.decode_www_form_component(url_aramasi[2].to_s)[0, 30]}' parametresi var — arama YAPILDI, sonuçlar bu sayfada."
+        elsif baslik_aramasi.match?(/@|için|arama|sonuç/i) || baslik_aramasi != driver.title.to_s
+          "\nARAMA: sayfa başlığı arama sonucu gösteriyor (\"#{baslik_aramasi[0, 60]}\")."
+        else
+          ""
+        end.tap { |s| s << "\nNOT: URL değişmediyse bile arama yapılmış olabilir (AJAX). Yukarıdaki metinde fiyat varsa CEVABI YAZ, kaydırma." unless s.empty? }
+      rescue StandardError
+        ""
+      end
+      parcalar.empty? ? arama : "\nDURUM: #{parcalar.join(', ')}. Gerekli bilgi yukarıdaki metinde varsa kaydırma.#{arama}"
     rescue StandardError
       ""
     end
-    "BAŞLIK: #{driver.title}\nURL: #{driver.current_url}#{ipucu}\nMETİN:\n#{truncate(text, max.to_i)}"
+    "BAŞLIK: #{driver.title}\nURL: #{driver.current_url}#{ipucu}\nKAYNAK: #{neden}\nMETİN:\n#{truncate(text, max.to_i)}"
   rescue StandardError => e
     error("read", e)
   end

@@ -123,11 +123,38 @@ def run_task(key, spec, mcp, llm, tools)
     if calls.empty?
       answer = msg["content"].to_s.strip
       # Küçük modeller ara sıra boş içerik + araç çağrısı olmadan durabiliyor;
-      # görevi sessizce yarıda bırakmak yerine bir kez nazikçe yönlendir.
+      # görevi sessizce yarıda bırakmak yerine yönlendir.
+      #
+      # ÖLÇÜLDÜ (arabam.com, gemma-4-e4b): model arama kutusuna yazdı, Enter
+      # gönderdi, sonuç sayfasına ULAŞTI ama boş yanıt döndürdü. Genel "devam et"
+      # mesajı işe yaramaz: model zaten sonuç sayfasındadır, yapılacak "adım"
+      # yoktur — yapması gereken CEVABI YAZMAKTIR. Bu yüzden yönlendirme sayfa
+      # durumuna duyarlı: sayfada fiyat/metin varsa cevabı iste.
       if answer.empty? && bos_yanit.zero?
         bos_yanit += 1
-        messages << { role: "user", content: "Yanıtın boş geldi. Göreve devam et ve sıradaki adımı TEK araç çağrısıyla yap." }
-        trace << "boş yanıt: model bir kez yönlendirildi"
+        ipucu = begin
+          # ÖLÇÜLDÜ (arabam.com k1): model browser_read ile fiyat listesini ALDI
+          # (7. adım) ama boş yanıt döndürüp kaydırmaya devam etti. Genel
+          # "devam et" mesajı burada zararlı: modeli daha çok kaydırmaya iter.
+          # Çözüm: son araç çıktısında fiyat varsa kaydırmayı YASAKLA, cevabı iste.
+          son_cikti = messages.reverse.find { |m| m[:role] == "tool" || m["role"] == "tool" }
+          son_metin = (son_cikti[:content] || son_cikti["content"]).to_s
+          sayfa = mcp.call("browser_evaluate", {
+            "script" => "return (document.body?document.body.innerText:'').slice(0,1200)"
+          }).to_s
+          para = /\d[\d.,]*\s*(?:TL|₺|\$|€|£)/
+          if son_metin.match?(para) || sayfa.match?(para)
+            "Yanıtın boş geldi. Bulunduğun sayfada fiyat bilgisi VAR (son araç çıktısında görünüyor). " \
+            "KAYDIRMA YAPMA, araç çağırma. Doğrudan cevabı yaz: 'ürün | fiyat' biçiminde, " \
+            "gördüğün GERÇEK adı ve fiyatı kullan. Uydurma."
+          else
+            "Yanıtın boş geldi. Göreve devam et ve sıradaki adımı TEK araç çağrısıyla yap."
+          end
+        rescue StandardError
+          "Yanıtın boş geldi. Göreve devam et ve sıradaki adımı TEK araç çağrısıyla yap."
+        end
+        messages << { role: "user", content: ipucu }
+        trace << "boş yanıt: model bir kez yönlendirildi (#{ipucu.include?('fiyat bilgisi VAR') ? 'cevap istendi' : 'devam istendi'})"
         next
       end
       break

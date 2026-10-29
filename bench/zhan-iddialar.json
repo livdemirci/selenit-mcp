@@ -1,0 +1,78 @@
+{
+  "part6": {
+    "env_sayisi": 15,
+    "env_listesi": [
+      "BROWSER_MCP_ATTACH_TIMEOUT",
+      "BROWSER_MCP_CHALLENGE_WAIT",
+      "BROWSER_MCP_DOWNLOAD_DIR",
+      "BROWSER_MCP_FAILFAST",
+      "BROWSER_MCP_HEADLESS",
+      "BROWSER_MCP_LAZY_SCROLLS",
+      "BROWSER_MCP_MAX_ELEMENTS",
+      "BROWSER_MCP_OP_TIMEOUT",
+      "BROWSER_MCP_PORT",
+      "BROWSER_MCP_PROFILE_DIR",
+      "BROWSER_MCP_SCREENSHOT_DIR",
+      "BROWSER_MCP_TOAST_WAIT",
+      "BROWSER_MCP_WAIT",
+      "BROWSER_MODE",
+      "SELENIT_MINIMAL"
+    ],
+    "zorunlu": [],
+    "zorunlu_sayisi": 0,
+    "varsayilan_calisiyor": true
+  },
+  "part2": {
+    "oturumlar": {
+      "19982": {
+        "sure": 0.7,
+        "ok": true
+      },
+      "19981": {
+        "sure": 1.7,
+        "ok": true
+      },
+      "19983": {
+        "sure": 2.0,
+        "ok": true
+      }
+    },
+    "paralel_sure": 2.3,
+    "seri_tahmini": 4.4,
+    "basarili": 3
+  },
+  "part4": {
+    "gomulu_runner": false,
+    "export_var": true,
+    "senaryo_sayisi": 21,
+    "export_syntax_ok": true
+  },
+  "part5": {
+    "audit_dosya": "audit-20261029.jsonl",
+    "kayit": 1798,
+    "jsonl_gecerli": true,
+    "alanlar": [
+      "at",
+      "tool",
+      "args",
+      "ok",
+      "seconds",
+      "url",
+      "detail"
+    ]
+  },
+  "part8": {
+    "recorder": true,
+    "replay": true,
+    "senaryo": 21,
+    "oynatma_basarili": true
+  },
+  "part9": {
+    "role=searchbox": true,
+    "role=button name=Ara": true,
+    "role=link (3 adet)": true,
+    "role=heading": true,
+    "role=listitem": true,
+    "olmayan rol=slider": true
+  }
+}
