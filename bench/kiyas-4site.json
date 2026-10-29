@@ -1,0 +1,162 @@
+[
+  {
+    "site": "hepsiemlak",
+    "arac": "selenit",
+    "kosum": 1,
+    "pass": true,
+    "adim": 2,
+    "sure": 143.1,
+    "cevap": "ürün | Beşiktaş’ta Otoparklı Satılık Sıfır 1+1 Ar, fiyat: 11.000.000 TL",
+    "ham_cikti": "Model: google/gemma-4-e4b | MCP port: 19420 | araç: 23 | görev: sitenotr\n\nsitenotr (Site-nötr: arama yap, sonuç sayfasındaki ilk ürünün adını ve fiyatını oku) ... GEÇTİ (2 adım, 143.1s)\n\n--- sitenotr PASS (2 adım, 143.1s)\n    cevap: ürün | Beşiktaş’ta Otoparklı Satılık Sıfır 1+1 Ar, fiyat: 11.000.000 TL\n    1. browser_navigate(url=\"https://www.hepsiemlak.com\") -> Hepsiemlak | Satılık, Kiralık Ev & Emlak İlanları | https://www.hepsie\n    2. browser_type(ref=\"e7\", submit=\"true\", text=\"satılık daire\") -> yazıldı: e7 <- \"satılık daire\" + Enter\n\nSONUÇ: 1/1 geçti\n"
+  },
+  {
+    "site": "hepsiemlak",
+    "arac": "playwright",
+    "kosum": 1,
+    "pass": true,
+    "adim": 7,
+    "sure": 398.4,
+    "cevap": "ürün | Beşiktaş’ta Otoparklı Satılık Sıfır 1+1 Ara Kat, 11.000.000 TL",
+    "ham_cikti": "PW koşum 1/1 ... [pw-bench] bildirim: notifications/tools/list_changed\nPASS (7 adım, 398.4s)\n\nSONUÇ: 1/1 geçti | ort adım: 7 | ort süre: 398.4s\n--- koşum 1 PASS\n    cevap: ürün | Beşiktaş’ta Otoparklı Satılık Sıfır 1+1 Ara Kat, 11.000.000 TL\n    2. browser_snapshot() -> ### Page\n    3. browser_type(slowly=\"false\", submit=\"true\", target=\"textbox \\\"Konum, ilan no ya da \", text=\"satılık daire\") -> ### Error\n    4. browser_type(target=\"textbox \\\"Konum, ilan no ya da \", text=\"satılık daire\") -> ### Error\n    5. browser_type(element=\"textbox \\\"Konum, ilan no ya da \", submit=\"true\", text=\"satılık daire\") -> ### Error\n    6. browser_type(target=\"textbox \\\"Konum, ilan no ya da \", text=\"satılık daire\", submit=\"true\") -> ### Error\n    7. browser_find(text=\"satılık daire\") -> ### Result\n"
+  },
+  {
+    "site": "arabam",
+    "arac": "selenit",
+    "kosum": 1,
+    "pass": false,
+    "adim": 5,
+    "sure": 264.8,
+    "cevap": "",
+    "ham_cikti": "Model: google/gemma-4-e4b | MCP port: 19420 | araç: 23 | görev: sitenotr\n\nsitenotr (Site-nötr: arama yap, sonuç sayfasındaki ilk ürünün adını ve fiyatını oku) ... KALDI (5 adım, 264.8s)\n\n--- sitenotr FAIL (5 adım, 264.8s)\n    1. browser_navigate(url=\"https://www.arabam.com\") -> arabam.com: 2. El ve 0 Km Satılık Araç İlanları Platformu | https://ww\n    2. browser_type(ref=\"e2\", submit=\"true\", text=\"otomatik dizel\") -> yazıldı: e2 <- \"otomatik dizel\" + Enter\n    3. browser_click(ref=\"e16\") -> tıklandı: e16\n    4. browser_read() -> BAŞLIK:\n    boş yanıt: model bir kez yönlendirildi\n\nSONUÇ: 0/1 geçti\n"
+  },
+  {
+    "site": "arabam",
+    "arac": "playwright",
+    "kosum": 1,
+    "pass": false,
+    "adim": 6,
+    "sure": 167.2,
+    "cevap": "Aranan \"otomatik dizel\" ile eşleşen herhangi bir ilan veya bağlantı bulunamadı.",
+    "ham_cikti": "PW koşum 1/1 ... [pw-bench] bildirim: notifications/tools/list_changed\nFAIL (6 adım, 167.2s)\n\nSONUÇ: 0/1 geçti | ort adım: 6 | ort süre: 167.2s\n--- koşum 1 FAIL\n    cevap: Aranan \"otomatik dizel\" ile eşleşen herhangi bir ilan veya bağlantı bulunamadı.\n    1. browser_navigate(url=\"https://www.arabam.com\") -> ### Ran Playwright code\n    2. browser_snapshot() -> ### Page\n    3. browser_type(slowly=\"false\", submit=\"true\", target=\"textbox \\\"Kelime, galeri adı ve\", text=\"otomatik dizel\") -> ### Error\n    4. browser_type(target=\"textbox \\\"Kelime, galeri adı ve\", text=\"otomatik dizel\") -> ### Error\n    5. browser_type(slowly=\"false\", submit=\"true\", target=\"textbox \\\"Kelime, galeri adı ve\", text=\"otomatik dizel\") -> ### Error\n    6. browser_find(text=\"otomatik dizel\") -> ### Result\n"
+  },
+  {
+    "site": "letgo",
+    "arac": "selenit",
+    "kosum": 1,
+    "pass": true,
+    "adim": 4,
+    "sure": 240.1,
+    "cevap": "bisiklet | 750 TL",
+    "ham_cikti": "Model: google/gemma-4-e4b | MCP port: 19420 | araç: 23 | görev: sitenotr\n\nsitenotr (Site-nötr: arama yap, sonuç sayfasındaki ilk ürünün adını ve fiyatını oku) ... GEÇTİ (4 adım, 240.1s)\n\n--- sitenotr PASS (4 adım, 240.1s)\n    cevap: bisiklet | 750 TL\n    1. browser_navigate(url=\"https://www.letgo.com\") -> HATA (navigate): navigation canceled by concurrent navigation\n    2. browser_snapshot() -> | about:blank\n    3. browser_navigate(url=\"https://www.letgo.com\") -> letgo: İkinci El Online İlan ve Alışveriş Sitesi - Al & Sat | https://\n    4. browser_type(ref=\"e1\", text=\"bisiklet\", submit=\"true\") -> yazıldı: e1 <- \"bisiklet\" + Enter\n\nSONUÇ: 1/1 geçti\n"
+  },
+  {
+    "site": "letgo",
+    "arac": "playwright",
+    "kosum": 1,
+    "pass": false,
+    "adim": 2,
+    "sure": 113.0,
+    "cevap": "Aranan 'bisiklet' ile ilgili bir arama sonucu veya ürün listesi bulunamadı. Sayfa, doğrudan ilan vermekle ilgili genel bir bilgilendirme sayfasına yönlendiriyor",
+    "ham_cikti": "PW koşum 1/1 ... [pw-bench] bildirim: notifications/tools/list_changed\nFAIL (2 adım, 113.0s)\n\nSONUÇ: 0/1 geçti | ort adım: 2 | ort süre: 113.0s\n--- koşum 1 FAIL\n    cevap: Aranan 'bisiklet' ile ilgili bir arama sonucu veya ürün listesi bulunamadı. Sayfa, doğrudan ilan vermekle ilgili genel bir bilgilendirme sayfasına yönlendiriyor\n    1. browser_navigate(url=\"https://www.letgo.com\") -> ### Ran Playwright code\n    2. browser_find(text=\"bisiklet\") -> ### Result\n"
+  },
+  {
+    "site": "hepsiburada",
+    "arac": "selenit",
+    "kosum": 1,
+    "pass": false,
+    "adim": 4,
+    "sure": 256.2,
+    "cevap": "Arama kutusunu bulamadım ve sayfada 'kulaklık' ile eşleşen herhangi bir bağlantı bulunamadığı için görevi tamamlayamıyorum.",
+    "ham_cikti": "Model: google/gemma-4-e4b | MCP port: 19420 | araç: 23 | görev: sitenotr\n\nsitenotr (Site-nötr: arama yap, sonuç sayfasındaki ilk ürünün adını ve fiyatını oku) ... KALDI (4 adım, 256.2s)\n\n--- sitenotr FAIL (4 adım, 256.2s)\n    cevap: Arama kutusunu bulamadım ve sayfada 'kulaklık' ile eşleşen herhangi bir bağlantı bulunamadığı için görevi tamamlayamıyorum.\n    1. browser_navigate(url=\"https://www.hepsiburada.com\") -> Türkiye'nin En Çok Tavsiye Edilen E-ticaret Markası Hepsiburada | http\n    2. browser_type(ref=\"e1\", submit=\"true\", text=\"kulaklık\") -> HATA (type e1): seçici DOM'da hiç bulunmadı (1.5 sn'de, sayfa yüklü): \n    3. browser_find(text=\"kulaklık\") -> 'kulaklık' ile eşleşen öğe bulunamadı. browser_snapshot veya browser_r\n    4. browser_read() -> BAŞLIK:\n\nSONUÇ: 0/1 geçti\n"
+  },
+  {
+    "site": "hepsiburada",
+    "arac": "playwright",
+    "kosum": 1,
+    "pass": false,
+    "adim": 3,
+    "sure": 151.6,
+    "cevap": "Arama kutusu bulunamadı ve sayfada 'kulaklık' ile eşleşen herhangi bir bağlantı mevcut değildi.",
+    "ham_cikti": "PW koşum 1/1 ... [pw-bench] bildirim: notifications/tools/list_changed\nFAIL (3 adım, 151.6s)\n\nSONUÇ: 0/1 geçti | ort adım: 3 | ort süre: 151.6s\n--- koşum 1 FAIL\n    cevap: Arama kutusu bulunamadı ve sayfada 'kulaklık' ile eşleşen herhangi bir bağlantı mevcut değildi.\n    1. browser_navigate(url=\"https://www.hepsiburada.com\") -> ### Ran Playwright code\n    2. browser_find(text=\"kulaklık\") -> ### Result\n    3. browser_snapshot() -> ### Page\n"
+  },
+  {
+    "site": "hepsiemlak",
+    "arac": "selenit",
+    "kosum": 2,
+    "pass": true,
+    "adim": 2,
+    "sure": 168.1,
+    "cevap": "ürün | Aktif'ten Akçay'da🛑acil Satılık🛑 Özel Ta fiyat | 6.750.000 TL",
+    "ham_cikti": "Model: google/gemma-4-e4b | MCP port: 19420 | araç: 23 | görev: sitenotr\n\nsitenotr (Site-nötr: arama yap, sonuç sayfasındaki ilk ürünün adını ve fiyatını oku) ... GEÇTİ (2 adım, 168.1s)\n\n--- sitenotr PASS (2 adım, 168.1s)\n    cevap: ürün | Aktif'ten Akçay'da🛑acil Satılık🛑 Özel Ta fiyat | 6.750.000 TL\n    1. browser_navigate(url=\"https://www.hepsiemlak.com\") -> Hepsiemlak | Satılık, Kiralık Ev & Emlak İlanları | https://www.hepsie\n    2. browser_type(ref=\"e7\", text=\"satılık daire\") -> yazıldı: e7 <- \"satılık daire\" + Enter (not: arama alanına yazıldı, En\n\nSONUÇ: 1/1 geçti\n"
+  },
+  {
+    "site": "arabam",
+    "arac": "selenit",
+    "kosum": 2,
+    "pass": false,
+    "adim": 10,
+    "sure": 331.2,
+    "cevap": "",
+    "ham_cikti": "    1. browser_navigate(url=\"https://www.arabam.com\") -> arabam.com: 2. El ve 0 Km Satılık Araç İlanları Platformu | https://ww\n    2. browser_type(ref=\"e2\", submit=\"true\", text=\"otomatik dizel\") -> yazıldı: e2 <- \"otomatik dizel\" + Enter\n    3. browser_click(ref=\"e13\") -> HATA (click e13): seçici DOM'da hiç bulunmadı (1.3 sn'de, sayfa yüklü)\n    4. browser_snapshot() -> smoke | data:text/html;charset=utf-8,%3Chtml%3E%3Chead%3E%3Cmeta%20cha\n    5. browser_snapshot() -> smoke | data:text/html;charset=utf-8,%3Chtml%3E%3Chead%3E%3Cmeta%20cha\n    6. browser_snapshot() -> | about:blank\n    7. browser_click(ref=\"e20\") -> HATA (click e20): seçici DOM'da hiç bulunmadı (1.5 sn'de, sayfa yüklü)\n    8. browser_click(ref=\"e13\") -> HATA (click e13): seçici DOM'da hiç bulunmadı (1.5 sn'de, sayfa yüklü)\n    9. browser_find(text=\"otomatik dizel\") -> 'otomatik dizel' ile eşleşen öğe bulunamadı. browser_snapshot veya bro\n    10. browser_click(ref=\"e13\") -> HATA (click e13): seçici DOM'da hiç bulunmadı (1.4 sn'de, sayfa yüklü)\n\nSONUÇ: 0/1 geçti\n"
+  },
+  {
+    "site": "arabam",
+    "arac": "playwright",
+    "kosum": 2,
+    "pass": false,
+    "adim": 2,
+    "sure": 68.8,
+    "cevap": "Sayfada 'otomatik dizel' ile eşleşen herhangi bir bağlantı bulunamadı.",
+    "ham_cikti": "PW koşum 1/1 ... [pw-bench] bildirim: notifications/tools/list_changed\nFAIL (2 adım, 68.8s)\n\nSONUÇ: 0/1 geçti | ort adım: 2 | ort süre: 68.8s\n--- koşum 1 FAIL\n    cevap: Sayfada 'otomatik dizel' ile eşleşen herhangi bir bağlantı bulunamadı.\n    1. browser_navigate(url=\"https://www.arabam.com\") -> ### Ran Playwright code\n    2. browser_find(text=\"otomatik dizel\") -> ### Result\n"
+  },
+  {
+    "site": "hepsiemlak",
+    "arac": "playwright",
+    "kosum": 2,
+    "pass": false,
+    "adim": 2,
+    "sure": 64.0,
+    "cevap": "Ürün | 10.250.000 TL",
+    "ham_cikti": "PW koşum 1/1 ... [pw-bench] bildirim: notifications/tools/list_changed\nFAIL (2 adım, 64.0s)\n\nSONUÇ: 0/1 geçti | ort adım: 2 | ort süre: 64.0s\n--- koşum 1 FAIL\n    cevap: Ürün | 10.250.000 TL\n    1. browser_navigate(url=\"https://www.hepsiemlak.com\") -> ### Ran Playwright code\n    2. browser_find(text=\"satılık daire\") -> ### Result\n"
+  },
+  {
+    "site": "letgo",
+    "arac": "selenit",
+    "kosum": 2,
+    "pass": true,
+    "adim": 2,
+    "sure": 79.1,
+    "cevap": "ürün | Decathlon Eliptik Bisiklet, 8.500 TL",
+    "ham_cikti": "Model: google/gemma-4-e4b | MCP port: 19420 | araç: 23 | görev: sitenotr\n\nsitenotr (Site-nötr: arama yap, sonuç sayfasındaki ilk ürünün adını ve fiyatını oku) ... GEÇTİ (2 adım, 79.1s)\n\n--- sitenotr PASS (2 adım, 79.1s)\n    cevap: ürün | Decathlon Eliptik Bisiklet, 8.500 TL\n    1. browser_navigate(url=\"https://www.letgo.com\") -> letgo: İkinci El Online İlan ve Alışveriş Sitesi - Al & Sat | https://\n    2. browser_type(ref=\"e1\", text=\"bisiklet\", submit=\"true\") -> yazıldı: e1 <- \"bisiklet\" + Enter\n\nSONUÇ: 1/1 geçti\n"
+  },
+  {
+    "site": "letgo",
+    "arac": "playwright",
+    "kosum": 2,
+    "pass": false,
+    "adim": 2,
+    "sure": 98.5,
+    "cevap": "Arama kutusunda 'bisiklet' ile ilgili bir arama yapamadım, ancak sayfada ilan vermekle ilgili genel bir bağlantı buldum.",
+    "ham_cikti": "PW koşum 1/1 ... [pw-bench] bildirim: notifications/tools/list_changed\nFAIL (2 adım, 98.5s)\n\nSONUÇ: 0/1 geçti | ort adım: 2 | ort süre: 98.5s\n--- koşum 1 FAIL\n    cevap: Arama kutusunda 'bisiklet' ile ilgili bir arama yapamadım, ancak sayfada ilan vermekle ilgili genel bir bağlantı buldum.\n    1. browser_navigate(url=\"https://www.letgo.com\") -> ### Ran Playwright code\n    2. browser_find(text=\"bisiklet\") -> ### Result\n"
+  },
+  {
+    "site": "hepsiburada",
+    "arac": "selenit",
+    "kosum": 2,
+    "pass": true,
+    "adim": 2,
+    "sure": 77.2,
+    "cevap": "ürün | Redmi Buds 6 Play - Siyah Kulakiçi Kulaklık TWS (Xiaomi Türkiye Garantili) | 257 TL",
+    "ham_cikti": "Model: google/gemma-4-e4b | MCP port: 19420 | araç: 23 | görev: sitenotr\n\nsitenotr (Site-nötr: arama yap, sonuç sayfasındaki ilk ürünün adını ve fiyatını oku) ... GEÇTİ (2 adım, 77.2s)\n\n--- sitenotr PASS (2 adım, 77.2s)\n    cevap: ürün | Redmi Buds 6 Play - Siyah Kulakiçi Kulaklık TWS (Xiaomi Türkiye Garantili) | 257 TL\n    1. browser_navigate(url=\"https://www.hepsiburada.com\") -> Türkiye'nin En Çok Tavsiye Edilen E-ticaret Markası Hepsiburada | http\n    2. browser_type(ref=\"e1\", submit=\"true\", text=\"kulaklık\") -> yazıldı: e1 <- \"kulaklık\" + Enter (not: DOM yenilendi, işlem tamamland\n\nSONUÇ: 1/1 geçti\n"
+  },
+  {
+    "site": "hepsiburada",
+    "arac": "playwright",
+    "kosum": 2,
+    "pass": false,
+    "adim": 2,
+    "sure": 73.3,
+    "cevap": "Arama kutusu bulunamadı ve sayfadaki bağlantılarda 'kulaklık' ile eşleşen bir hedef de bulunamadı.",
+    "ham_cikti": "PW koşum 1/1 ... [pw-bench] bildirim: notifications/tools/list_changed\nFAIL (2 adım, 73.3s)\n\nSONUÇ: 0/1 geçti | ort adım: 2 | ort süre: 73.3s\n--- koşum 1 FAIL\n    cevap: Arama kutusu bulunamadı ve sayfadaki bağlantılarda 'kulaklık' ile eşleşen bir hedef de bulunamadı.\n    1. browser_navigate(url=\"https://www.hepsiburada.com\") -> ### Ran Playwright code\n    2. browser_find(text=\"kulaklık\") -> ### Result\n"
+  }
+]
