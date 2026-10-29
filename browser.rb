@@ -34,7 +34,11 @@ class SelenitBrowser
     /bir dakika lütfen/i, /just a moment/i, /checking your browser/i,
     /verify(ing)? (that )?you are (a )?human/i, /attention required/i,
     /güvenlik doğrulaması/i, /ddos protection/i,
-    /enable javascript and cookies/i, /access denied/i
+    /enable javascript and cookies/i, /access denied/i,
+    # "verify you are not a bot" (StockX/DataDome) yukarıdaki kalıba takılmıyordu:
+    # sıra "you are not a bot" → /you are a human/ eşleşmez.
+    /verify you are not a bot/i, /verify you.{0,10}not a (ro)?bot/i,
+    /are you a (ro)?bot/i, /bot doğrulaması/i
   ].freeze
   CHALLENGE_WAIT = (ENV["BROWSER_MCP_CHALLENGE_WAIT"] || 20).to_f
   # Seçici DOM'da hiç yoksa (sayfa yüklüyken) bu sürede hızla reddet:
@@ -366,28 +370,153 @@ class SelenitBrowser
     snapshot_text
   end
 
+  public
+
   def challenge_page?
-    baslik = driver.title.to_s
-    uzunluk = begin
-      driver.execute_script("return (document.body ? document.body.innerText.length : 0)").to_i
-    rescue StandardError
-      0
+    # YALNIZCA ana belgeden oku.
+    #
+    # Ölçüldü: sürücünün execute_script'i VAKA-2'de (nowsecure.nl) 30 sn sonra
+    # Selenium::WebDriver::Error::TimeoutError fırlattı; alt çağrılardaki
+    # "rescue StandardError; 0" yedeği yüzünden uzunluk 0, gövde "" sayıldı ve
+    # gerçek bir duvar "TEMIZ" olarak sınıflandırıldı. Yani hata yoluna düşen
+    # gözlem YANLIŞ NEGATİF üretiyordu. Burada hatayı yutmak yerine
+    # bilinmiyor'a taşıyoruz: gözlem yapılamadıysa "duvar yok" denemez.
+    bilgi = challenge_probe
+    return false if bilgi.nil?   # gerçek gözlem hatası: eski davranış
+
+    # :bilinmiyor → duvar VARSAYILIR. Yanlış pozitif, modeli beklemeye/uyarmaya
+    # iter ve zararsızdır; yanlış negatif ise modele boş sayfayı gerçek içerik
+    # sanıp adım yaktırır (VAKA-2'de tam bu oldu).
+    return true if bilgi == :bilinmiyor
+
+    # Normal yol boolean döner; ÖLÇÜM Hash ise karar burada verilir.
+    bilgi.is_a?(Hash) ? challenge_karari(bilgi, bilgi["baslik"].to_s) : bilgi
+  end
+
+  # Ölçüm Hash'inden karar. Ayrı metot: birim testi sürücü açmadan koşabilsin.
+  def challenge_karari(veri, baslik)
+    uzunluk = veri["uzunluk"].to_i
+    govde = veri["metin"].to_s
+    dom = veri["dom"].to_s
+    iframe = veri["iframe"].to_s
+
+    # Doğrulama ekranları kısadır; uzun içerikli bir sayfada geçen
+    # "access denied" gibi ifadeler yanlış pozitif üretmesin.
+    if uzunluk > 2000
+      # Uzun sayfa: metin kalıbı aranmaz, yalnızca kesin duvar işaretleri.
+      return true if iframe.match?(/challenges\.cloudflare|datadome/i)
+
+      return false
     end
-    govde = begin
-      driver.execute_script("return (document.body ? document.body.innerText : '').slice(0, 600)").to_s
+
+    # Kısa sayfa: metin kalıbı VEYA kesin duvar işaretleri.
+    return true if CHALLENGE_PATTERNS.any? { |re| re.match?(baslik) || re.match?(govde) }
+
+    # Görünür Turnstile widget'ı = ÇÖZÜLMEMİŞ doğrulama. Ölçüldü (nowsecure.nl):
+    # metin yalnızca "NOWSECURE", turnstile script'i her Cloudflare sitesinde var,
+    # ama sayfada 458x126 boyutunda GÖRÜNÜR bir .cf-turnstile div'i duruyor ve
+    # çözülene kadar arkasındaki içerik gelmiyor.
+    #
+    # DÜZELTME: eskiden "cf_clearance çerezi varsa çözülmüştür" diye kısa yol
+    # vardı — YANLIŞ. Ölçüldü: nowsecure.nl'de cf_clearance çerezi VAR ama
+    # widget hâlâ ekranda ve içerik yok; çerez çözümden önce de yazılabiliyor.
+    # Karar yalnızca widget'ın görünürlüğüne dayanır.
+    return true if turnstile_cozulmemis?(veri)
+
+    # Metin kalıbı tutmasa da duvar işareti kesinse duvardır:
+    #  - challenges.cloudflare.com iframe'i (Turnstile / managed challenge)
+    #  - DataDome'un captcha iframe'i (geo.captcha-delivery.com)
+    # nowsecure.nl tam bu durum: metin yalnızca "NOWSECURE" (kalıp tutmaz),
+    # duvar işareti ise iframe/widget içinde.
+    #
+    # NOT: stockx.com DataDome korumalı ama captcha iframe'i GİZLİ olarak
+    # DOM'da duruyor; sayfa açık. Bu yüzden iframe varlığı tek başına yetmez —
+    # iframe de görünür olmalı (turnstile için yapılan ölçümün aynısı).
+    return true if duvar_iframe_gorunur?(veri)
+
+    # challenge-platform / __cf_chl script'i TEMİZ Cloudflare sitelerinde de
+    # bulunur; tek başına yetmez. Sayfa kısa VE görünür içerik yoksa duvardır.
+    return true if dom.match?(/__cf_chl|cf-browser-verification|challenge-platform/i) && uzunluk < 300
+
+    # Kısa ama tamamen boş gövde: içerik gelmemiş → duvar/oturmamış sayfa.
+    return true if uzunluk.zero?
+
+    false
+  end
+
+
+  public
+
+  # Gözlem üç durumlu: Hash (ölçüm) | :bilinmiyor (ölçüm yapılamadı).
+  # Tek execute_script: alt çağrı başına ayrı hata yolu açmıyoruz — VAKA-2'de
+  # (nowsecure.nl) ayrı çağrılar 30 sn timeout'a düştü ve yutulan hata
+  # yüzünden duvar "temiz" sayıldı.
+  def challenge_probe
+    baslik = begin
+      driver.title.to_s
     rescue StandardError
       ""
     end
-    # Doğrulama ekranları kısadır; uzun içerikli bir sayfada geçen
-    # "access denied" gibi ifadeler yanlış pozitif üretmesin.
-    return false if uzunluk > 2000
-    # Gövde metni doğrulama kalıbı taşımıyorsa sayfa geçmiş sayılır:
-    # gerçek içerik geldiğinde başlık güncellenmese bile (ör. data: URL'lerde
-    # document.title ataması yansımayabilir) doğrulama bitmiştir.
-    govdeTemiz = !CHALLENGE_PATTERNS.any? { |re| re.match?(govde) }
-    return false if govdeTemiz && !CHALLENGE_PATTERNS.any? { |re| re.match?(baslik) }
 
-    CHALLENGE_PATTERNS.any? { |re| re.match?(baslik) || re.match?(govde) }
+    veri = begin
+      driver.execute_script(<<~JS)
+        var b = document.body;
+        var t = b ? (b.innerText || '') : '';
+        var ifr = Array.prototype.map.call(document.querySelectorAll('iframe'), function (f) { return f.src || ''; }).join(' ');
+        return {
+          uzunluk: t.length,
+          metin: t.slice(0, 600),
+          dom: (document.documentElement ? document.documentElement.outerHTML : '').slice(0, 20000),
+          iframe: ifr,
+          canvas: document.querySelectorAll('canvas').length,
+          // Çözülmemiş Turnstile: GÖRÜNÜR ve boyutlu .cf-turnstile kutusu.
+          // Sadece script varlığına bakmak yanıltır (her CF sitesinde var).
+          turnstile: Array.prototype.some.call(document.querySelectorAll('.cf-turnstile, [data-turnstile-sitekey]'), function (e) {
+            var r = e.getBoundingClientRect();
+            return r.width > 50 && r.height > 20;
+          }),
+          // GÖRÜNÜR captcha/challenge iframe'i. stockx.com'da DataDome iframe'i
+          // gizli duruyor; sadece varlığına bakmak yanlış pozitif üretirdi.
+          duvar_iframe: Array.prototype.some.call(document.querySelectorAll('iframe'), function (f) {
+            if (!/challenges\.cloudflare|captcha-delivery|datadome/i.test(f.src || '')) return false;
+            var r = f.getBoundingClientRect();
+            return r.width > 50 && r.height > 20;
+          })
+        };
+      JS
+    rescue StandardError
+      nil
+    end
+
+    unless veri.is_a?(Hash)
+      # Ölçüm yapılamadı: başlık hâlâ karar verebilir.
+      return true if CHALLENGE_PATTERNS.any? { |re| re.match?(baslik) }
+
+      return :bilinmiyor
+    end
+
+    veri["baslik"] = baslik
+    veri
+  end
+
+  private
+
+  private
+
+  def duvar_iframe_gorunur?(veri)
+    veri["duvar_iframe"] == true
+  rescue StandardError
+    false
+  end
+
+  def turnstile_cozulmemis?(veri)
+    veri["turnstile"] == true
+  rescue StandardError
+    false
+  end
+
+  def cf_clearance_var?
+    driver.manage.all_cookies.any? { |c| c[:name].to_s == "cf_clearance" }
   rescue StandardError
     false
   end
@@ -400,6 +529,8 @@ class SelenitBrowser
   rescue Selenium::WebDriver::Error::TimeoutError
     false
   end
+
+  public
 
   # Kompakt DOM okuması: snapshot'tan çok hafif (URL/başlık/uyarı/modal sayı),
   # ya da q ile seçilen öğelerin kısa listesi. Büyük sayfalarda sayfanın
