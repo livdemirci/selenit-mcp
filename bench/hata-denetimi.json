@@ -1,0 +1,125 @@
+{
+  "araclar": [
+    {
+      "arac": "browser_navigate",
+      "error_yardimcisi": true,
+      "isaret_sayisi": 9,
+      "yonlendirici": true
+    },
+    {
+      "arac": "browser_type",
+      "error_yardimcisi": true,
+      "isaret_sayisi": 10,
+      "yonlendirici": true
+    },
+    {
+      "arac": "browser_click",
+      "error_yardimcisi": true,
+      "isaret_sayisi": 4,
+      "yonlendirici": true
+    },
+    {
+      "arac": "browser_find",
+      "error_yardimcisi": true,
+      "isaret_sayisi": 4,
+      "yonlendirici": true
+    },
+    {
+      "arac": "browser_read",
+      "error_yardimcisi": true,
+      "isaret_sayisi": 3,
+      "yonlendirici": true
+    },
+    {
+      "arac": "browser_select",
+      "error_yardimcisi": true,
+      "isaret_sayisi": 3,
+      "yonlendirici": true
+    },
+    {
+      "arac": "browser_alert",
+      "error_yardimcisi": true,
+      "isaret_sayisi": 1,
+      "yonlendirici": true
+    },
+    {
+      "arac": "browser_scroll",
+      "error_yardimcisi": true,
+      "isaret_sayisi": 3,
+      "yonlendirici": true
+    },
+    {
+      "arac": "browser_frame",
+      "error_yardimcisi": true,
+      "isaret_sayisi": 2,
+      "yonlendirici": true
+    },
+    {
+      "arac": "browser_upload",
+      "error_yardimcisi": true,
+      "isaret_sayisi": 1,
+      "yonlendirici": true
+    },
+    {
+      "arac": "browser_hover",
+      "error_yardimcisi": true,
+      "isaret_sayisi": 1,
+      "yonlendirici": true
+    },
+    {
+      "arac": "browser_press_key",
+      "error_yardimcisi": true,
+      "isaret_sayisi": 1,
+      "yonlendirici": true
+    },
+    {
+      "arac": "browser_resize",
+      "error_yardimcisi": true,
+      "isaret_sayisi": 3,
+      "yonlendirici": true
+    },
+    {
+      "arac": "browser_monitor",
+      "error_yardimcisi": true,
+      "isaret_sayisi": 1,
+      "yonlendirici": true
+    },
+    {
+      "arac": "browser_wait_for",
+      "error_yardimcisi": false,
+      "isaret_sayisi": 6,
+      "yonlendirici": true
+    },
+    {
+      "arac": "browser_screenshot",
+      "error_yardimcisi": true,
+      "isaret_sayisi": 0,
+      "yonlendirici": true
+    },
+    {
+      "arac": "browser_evaluate",
+      "error_yardimcisi": true,
+      "isaret_sayisi": 3,
+      "yonlendirici": true
+    },
+    {
+      "arac": "browser_history",
+      "error_yardimcisi": true,
+      "isaret_sayisi": 0,
+      "yonlendirici": true
+    },
+    {
+      "arac": "browser_tabs",
+      "error_yardimcisi": true,
+      "isaret_sayisi": 1,
+      "yonlendirici": true
+    },
+    {
+      "arac": "browser_dom",
+      "error_yardimcisi": true,
+      "isaret_sayisi": 0,
+      "yonlendirici": true
+    }
+  ],
+  "zayif": []
+}

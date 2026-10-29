@@ -1,0 +1,61 @@
+{
+  "protokol": {
+    "model": "deepseek-v4.1-flash",
+    "sicaklik": 0,
+    "adim_butcesi": 16,
+    "kosum_sayisi": 2,
+    "izolasyon": "her koşumda pkill chrome-profile + pw-profile",
+    "sistem_promptu": "birebir aynı (kiyas_claude.rb SYSTEM)",
+    "gorev_metni": "birebir aynı (kiyas_claude.rb gorev_prompt)",
+    "arac_yuzeyi": "her iki araç KENDİ yerleşik araç listesiyle; hiçbir metin değiştirilmedi",
+    "olcum": "cevaptaki başlık sayfada gerçekten var mı (uydurma tespiti)"
+  },
+  "esitlik": {
+    "ortak_prompt": true,
+    "selenit_arac_sayisi": 23,
+    "pw_arac_sayisi": 25,
+    "ortak_arac": [
+      "browser_click",
+      "browser_close",
+      "browser_evaluate",
+      "browser_find",
+      "browser_hover",
+      "browser_navigate",
+      "browser_press_key",
+      "browser_resize",
+      "browser_snapshot",
+      "browser_tabs",
+      "browser_type",
+      "browser_wait_for"
+    ],
+    "ortak_arac_sayisi": 12,
+    "sadece_selenit": [
+      "browser_alert",
+      "browser_dom",
+      "browser_frame",
+      "browser_history",
+      "browser_monitor",
+      "browser_read",
+      "browser_screenshot",
+      "browser_scroll",
+      "browser_select",
+      "browser_status",
+      "browser_upload"
+    ],
+    "sadece_pw": [
+      "browser_console_messages",
+      "browser_drag",
+      "browser_drop",
+      "browser_emulate_media",
+      "browser_file_upload",
+      "browser_fill_form",
+      "browser_handle_dialog",
+      "browser_navigate_back",
+      "browser_network_request",
+      "browser_network_requests",
+      "browser_run_code_unsafe",
+      "browser_select_option",
+      "browser_take_screenshot"
+    ]
+  }
+}

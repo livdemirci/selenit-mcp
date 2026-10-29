@@ -33,12 +33,17 @@ class SelenitBrowser
   CHALLENGE_PATTERNS = [
     /bir dakika lütfen/i, /just a moment/i, /checking your browser/i,
     /verify(ing)? (that )?you are (a )?human/i, /attention required/i,
-    /güvenlik doğrulaması/i, /ddos protection/i,
-    /enable javascript and cookies/i, /access denied/i,
+    /güvenlik doğrulaması/i, /ddos protection/i, /enable javascript and cookies/i, /access denied/i,
     # "verify you are not a bot" (StockX/DataDome) yukarıdaki kalıba takılmıyordu:
     # sıra "you are not a bot" → /you are a human/ eşleşmez.
     /verify you are not a bot/i, /verify you.{0,10}not a (ro)?bot/i,
-    /are you a (ro)?bot/i, /bot doğrulaması/i
+    /are you a (ro)?bot/i, /bot doğrulaması/i,
+    # ÖLÇÜLDÜ (PyPI): arama sayfası "Client Challenge" + "Enter the characters
+    # seen in the image below" gösteriyor (83 karakter, CAPTCHA). Tespit
+    # "temiz" diyordu → model 16 adım boyunca sonuç aradı. CAPTCHA ekranları
+    # siteler arasında en yaygın duvar tipi; kalıbı genel tut.
+    /client challenge/i, /enter the characters/i, /captcha/i,
+    /recaptcha|hcaptcha|turnstile/i, /human verification/i, /doğrulama kodu/i
   ].freeze
   CHALLENGE_WAIT = (ENV["BROWSER_MCP_CHALLENGE_WAIT"] || 20).to_f
   # Seçici DOM'da hiç yoksa (sayfa yüklüyken) bu sürede hızla reddet:
@@ -341,12 +346,16 @@ class SelenitBrowser
     if hata_sayfasi?
       note += "UYARI (navigate): BU BİR HATA SAYFASI (404 / sayfa bulunamadı) — #{target}\n" \
               "Bu sayfadaki bağlantılar ve ref'ler hedef içeriğe ait DEĞİLDİR. " \
-              "URL'yi kendin uydurma; hedefe gitmek için sayfadaki mevcut bağlantıları kullan, " \
-              "arama kutusu varsa onu kullan ya da görevi bu yolla başarısız say.\n"
+              "URL'yi kendin uydurma; hedefe gitmek için sayfadaki mevcut bağlantıları kullan " \
+              "(browser_find ile bul), arama kutusu varsa onu kullan (browser_type), " \
+              "ya da görevi bu yolla başarısız say.\n"
     end
     note + snapshot_text(header: true)
   rescue Policy::Denied => e
-    "ENGELLENDİ: #{e.message}"
+    # Politika reddi: hangi adresin engellendiğini ve ne yapılacağını söyle.
+    "ENGELLENDİ: #{e.message}\n" \
+    "İpucu: bu adres BROWSER_MCP_ALLOW/DENY politikasıyla engellendi. " \
+    "Başka bir adres dene ya da görevi bu yolla başarısız say; aynı adresi tekrar denemek sonuç vermez."
   rescue StandardError => e
     error("navigate", e)
   end
@@ -839,7 +848,9 @@ class SelenitBrowser
     # Hiçbiri yoksa anlamlı hata döndür (sessiz başarısızlık yok).
     if ref.to_s.empty? && selector.to_s.empty?
       aday = varsayilan_giris_alani
-      return "HATA (type): yazılacak alan bulunamadı (ref/selector ver ya da önce browser_snapshot al)" unless aday
+      return "HATA (type): yazılacak alan bulunamadı. İpucu: browser_snapshot çağır ve çıkan ref'i ver " \
+             "(ör. browser_type(ref: 'e4', text: '...')), ya da ARIA ile hedefle: " \
+             "browser_find(role: 'searchbox') ile ref al." unless aday
       element = aday
     else
       # Gizli ama MEVCUT alan: bazı siteler arama panelini visibility:hidden
@@ -1357,7 +1368,12 @@ class SelenitBrowser
         rescue StandardError
           ""
         end
-        url_aramasi = parametre.match(/(?:^|&)(q|k|query|search|ara|kelime|arama)=([^&]*)/i)
+        # Arama parametresi tespiti SİTE ADINA BAĞLI OLMAMALI.
+        # ÖLÇÜLDÜ (MDN): arama sonucu ?s=flexbox — listede "s" yoktu, model
+        # "arama olmadı" sandı. Tek karakterli s/q/k'dan uzun adlara kadar
+        # her arama parametresini yakala; ayrıca DEĞERİ sayfada gerçekten
+        # görünüyor mu diye bak (asıl sinyal bu).
+        url_aramasi = parametre.match(/(?:^|&)([a-z_]{1,12})=([^&]{2,})/i)
         baslik_aramasi = driver.title.to_s
         if !dolu.empty?
           "\nARAMA: arama kutusunda \"#{dolu}\" yazılı — arama YAPILDI, sonuçlar bu sayfada."
@@ -1383,7 +1399,7 @@ class SelenitBrowser
   # Açılır listeden seçim
   def select(ref: nil, selector: nil, value: nil, label: nil)
     ensure_session
-    raise "value veya label gerekli" if value.nil? && label.nil?
+    raise "value veya label gerekli — ör. browser_select(ref: 'e3', label: 'İstanbul') veya browser_select(selector: '#il', value: '34')" if value.nil? && label.nil?
 
     element = resolve(ref, selector, nil, wait: :visible)
     # Küçük modeller sık sık düğme ref'ini select alanında kullanıyor;
@@ -1527,10 +1543,10 @@ class SelenitBrowser
   # Gizli file input normalde "görünmez"; bu yüzden yalnızca varlık beklenir.
   def upload(ref: nil, selector: nil, path: nil)
     ensure_session
-    raise "path gerekli" if path.nil? || path.to_s.empty?
+    raise "path gerekli — dosyanın TAM yolu verilmeli, ör. /tmp/belge.pdf" if path.nil? || path.to_s.empty?
 
     full = File.expand_path(path.to_s)
-    raise "dosya yok: #{full}" unless File.exist?(full)
+    raise "dosya yok: #{full} — yolu kontrol et; dosya yükleme için gerçek bir dosya olmalı" unless File.exist?(full)
 
     element = resolve(ref, selector, nil, wait: :presence)
     element.send_keys(full)
@@ -1946,19 +1962,19 @@ class SelenitBrowser
 
     case kind
     when "selector"
-      raise "selector gerekli (type=selector)" if selector.to_s.empty?
+      raise "selector gerekli (type=selector) — ör. browser_wait_for(type: 'selector', selector: '.urun-listesi')" if selector.to_s.empty?
       wait_until(timeout: t, message: "seçici görünmedi: #{selector}") do
         driver.find_element(:css, selector.to_s).displayed?
       end
       "seçici göründü: #{selector} (#{driver.current_url})"
     when "url"
-      raise "value veya text gerekli (type=url)" if needle.empty?
+      raise "value veya text gerekli (type=url) — ör. browser_wait_for(type: 'url', value: '/search')" if needle.empty?
       wait_until(timeout: t, message: "URL içinde '#{needle}' görünmedi") do
         driver.current_url.include?(needle)
       end
       "'#{needle}' URL'de göründü (#{driver.current_url})"
     when "gone"
-      raise "selector gerekli (type=gone)" if selector.to_s.empty?
+      raise "selector gerekli (type=gone) — ör. browser_wait_for(type: 'gone', selector: '.yukleniyor')" if selector.to_s.empty?
       wait_until(timeout: t, message: "öğe kaybolmadı: #{selector}") do
         driver.find_elements(:css, selector.to_s).none?(&:displayed?)
       end
@@ -1995,17 +2011,56 @@ class SelenitBrowser
       end
     end
   rescue Selenium::WebDriver::Error::TimeoutError => e
-    "bekleme zaman aşımı: #{e.message}"
+    # Modele SONRAKİ ADIMI söyle. Zaman aşımı çoğu zaman yanlış beklentiden
+    # gelir, sayfanın yavaşlığından değil. Denetim (hata_denetimi.rb) bu aracı
+    # %0 yönlendirmeli bulmuştu; model zaman aşımından sonra ne yapacağını
+    # bilmiyor ve aynı koşulu tekrar deniyor.
+    "bekleme zaman aşımı: #{e.message}\n" \
+    "İpucu: öğe adı/URL yanlış olabilir. browser_snapshot ile sayfada GERÇEKTEN ne olduğunu kontrol et; " \
+    "sayfa zaten yüklendiyse browser_read ile metni oku. Aynı bekleme koşulunu tekrar denemek zaman kaybıdır."
   rescue StandardError => e
-    "bekleme hatası: #{e.message}"
+    "bekleme hatası: #{e.message}\n" \
+    "İpucu: type parametresi text|selector|url|gone|count|load|download olmalı. " \
+    "selector tiplerinde 'selector' alanı zorunlu."
   end
 
   def evaluate(script)
     ensure_session
-    result = driver.execute_script(script.to_s)
-    truncate(result.is_a?(String) ? result : result.inspect, 1500)
+
+    # ÖLÇÜLDÜ (MDN, deepseek-v4.1-flash): model kesik JavaScript gönderdi
+    # ("document.querySelector('" gibi) ve execute_script nil döndürdü.
+    # Model bunu "sayfa boş" sanıp 8 adım daha harcadı. Kesik script'i
+    # sessizce nil döndürmek yerine düzeltilebilir bir hata olarak bildir.
+    kod = script.to_s
+    if (eksik = kesik_script_nedeni(kod))
+      return "HATA (evaluate): gönderdiğin script KESİK/geçersiz — #{eksik}. " \
+             "Script'i tek satırda, tamamlanmış olarak yeniden gönder. " \
+             "Sadece 'return <ifade>' biçimini kullan; çok satırlı fonksiyon yazma."
+    end
+
+    result = driver.execute_script(kod)
+    # nil dönerse bunu AÇIKÇA söyle: sessiz nil, modele "sayfa boş" izlenimi verir.
+    return "SONUÇ: null (script çalıştı ama değer döndürmedi — 'return' ekledin mi?)" if result.nil?
+
+    # Kesme sınırı: 1500 küçük modeller için doğru (bağlam korunur), ama
+    # sayfa metni doğrulaması yapan çağıranlar (ölçüt) tam metne ihtiyaç duyar.
+    # BROWSER_MCP_EVAL_MAX ile ayarlanabilir; varsayılan 1500.
+    truncate(result.is_a?(String) ? result : result.inspect,
+             (ENV["BROWSER_MCP_EVAL_MAX"] || 1500).to_i)
   rescue StandardError => e
     error("evaluate", e)
+  end
+
+  # Kesik script tespiti: tırnak/parantez/süslü parantez dengesi.
+  # Modelin ürettiği metin sık sık cümlenin ortasında kesiliyor.
+  def kesik_script_nedeni(kod)
+    return "boş" if kod.strip.empty?
+    return "tırnak dengesiz" if kod.count("'").odd? || kod.count('"').odd?
+
+    [["(", ")"], ["{", "}"], ["[", "]"]].each do |ac, kapa|
+      return "parantez dengesiz (#{ac}#{kapa})" if kod.count(ac) != kod.count(kapa)
+    end
+    nil
   end
 
   def screenshot(dir = nil)
@@ -2175,9 +2230,15 @@ class SelenitBrowser
     if @driver && alive?
       "bağlı | #{driver.title} | #{driver.current_url} | port #{@port} | bekleme #{@wait_timeout}s"
     elsif port_open?(@port)
-      "port açık (henüz bağlanmadı) | port #{@port}"
+      "port açık (henüz bağlanmadı) | port #{@port} — browser_navigate çağırınca oturum açılır"
     else
-      "tarayıcı yok | port #{@port}"
+      # ÖLÇÜLDÜ (DeepSeek, wikipedia k1): model İLK araç olarak browser_status
+      # çağırdı, "tarayıcı yok" gördü ve görevi hiç başlatmadan bıraktı. Oysa
+      # tarayıcı tembel açılır: ilk browser_navigate çağrısında oturum kurulur.
+      # "Tarayıcı yok" ifadesi küçük modeli yanıltıyordu; durumu ve sonraki
+      # adımı açıkça yaz.
+      "henüz oturum açılmadı (bu bir HATA DEĞİL) | port #{@port} — " \
+      "tarayıcı ilk browser_navigate çağrısında otomatik açılır. Göreve devam et."
     end
   end
 

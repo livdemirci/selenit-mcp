@@ -1,0 +1,86 @@
+[
+  {
+    "site": "sahibinden",
+    "url": "https://www.sahibinden.com",
+    "yukleme_sn": 3.7,
+    "ham": {
+      "baslik": "Bir dakika lütfen...",
+      "canvas_sayisi": 0,
+      "girdi_sayisi": 1,
+      "iframe_sayisi": 0,
+      "iframe_src": [],
+      "izler": [
+        "Bir dakika",
+        "Cloudflare",
+        "doğrulama"
+      ],
+      "link_sayisi": 2,
+      "metin_ilk300": "www.sahibinden.com\nGüvenlik doğrulaması yapılıyor\n\nBu web sitesi, kötü niyetli botlara karşı korunmak için bir güvenlik hizmeti kullanıyor. Web sitesi bir bot olmadığınızı doğrularken bu sayfa görüntülenir.\n\nRay ID: a521144e78f9b62d\nCloudflare ile Performans ve Güvenlik\nGizlilik",
+      "metin_uzunluk": 279,
+      "url": "https://www.sahibinden.com/cs/checkLoading?returnUrl=https%3A%2F%2Fwww.sahibinden.com"
+    },
+    "arac_challenge": true,
+    "arac_snapshot_satir": 3,
+    "arac_snapshot_ilk": "Bir dakika lütfen... | https://www.sahibinden.com/cs/checkLoading?returnUrl=https%3A%2F%2F",
+    "navigator_webdriver": "false",
+    "cookie_sayisi": 9
+  },
+  {
+    "site": "arabam",
+    "url": "https://www.arabam.com",
+    "yukleme_sn": 3.8,
+    "ham": {
+      "baslik": "arabam.com: 2. El ve 0 Km Satılık Araç İlanları Platformu",
+      "canvas_sayisi": 0,
+      "girdi_sayisi": 1,
+      "iframe_sayisi": 7,
+      "iframe_src": [
+        "",
+        "",
+        "about:blank",
+        "about:blank"
+      ],
+      "izler": [],
+      "link_sayisi": 346,
+      "metin_ilk300": "Trink sat!  Araç Al  Araç Sat  Hizmetlerimiz  arabam Blog  Kurumsal  Garaj  Ekspertiz \n\nSon aramalar\n\nGiriş yap / Üye ol\nAracını sat\nSon 24 Saat\n / \n48 Saat\nAcil İlanlar\nFiyatı Düşenler\nTüm İlanlar 289.613\nOtomobil 175.615\nArazi, SUV, Pick-up 44.368\nMotosiklet 14.923\nMinivan & Panelvan 34.880\nTicari",
+      "metin_uzunluk": 6353,
+      "url": "https://www.arabam.com/"
+    },
+    "arac_challenge": false,
+    "arac_snapshot_satir": 42,
+    "arac_snapshot_ilk": "arabam.com: 2. El ve 0 Km Satılık Araç İlanları Platformu | https://www.arabam.com/",
+    "navigator_webdriver": "false",
+    "cookie_sayisi": 11
+  },
+  {
+    "site": "hepsiemlak",
+    "url": "https://www.hepsiemlak.com",
+    "yukleme_sn": 7.0,
+    "ham": {
+      "baslik": "Hepsiemlak | Satılık, Kiralık Ev & Emlak İlanları",
+      "canvas_sayisi": 0,
+      "girdi_sayisi": 4,
+      "iframe_sayisi": 3,
+      "iframe_src": [
+        "https://11818405.fls.doubleclick.net/activityi;src=11818405;type=invmedia;cat=he",
+        "https://gum.criteo.com/syncframe?topUrl=www.hepsiemlak.com&origin=onetag&ceid=43",
+        ""
+      ],
+      "izler": [],
+      "link_sayisi": 491,
+      "metin_ilk300": "Satılık\nKiralık\nSezonluk Kiralık\nProjeler\nDanışmanlar\nEN · RU\nGiriş Yap\nveya Üye Ol\nÜcretsiz İlan Ver\nAradığın \narsayı\n, bulup\nOHH BE demek için Hepsiemlak!\nAra\nile Ara\nFırsat Satılık Daireler\nYatırımlık Evler\nFırsat Kiralık Daireler\nSite İçindeki Evler\nKonut Değerleme Yap\nFiyatı Düşen Satılıklar\nFi",
+      "metin_uzunluk": 15964,
+      "url": "https://www.hepsiemlak.com/"
+    },
+    "arac_challenge": false,
+    "arac_snapshot_satir": 42,
+    "arac_snapshot_ilk": "Hepsiemlak | Satılık, Kiralık Ev & Emlak İlanları | https://www.hepsiemlak.com/",
+    "navigator_webdriver": "false",
+    "cookie_sayisi": 21
+  },
+  {
+    "site": "letgo",
+    "url": "https://www.letgo.com",
+    "hata": "Selenium::WebDriver::Error::UnknownError: navigation canceled by concurrent navigation\nError\n    at new UnknownErrorException (<anonymous>:81:5268)\n    at BrowsingContextImpl.navigate (<anonymous>:743:16593)\n    at async #processCommand (<ano"
+  }
+]

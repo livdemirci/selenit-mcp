@@ -1,0 +1,17 @@
+{
+  "karakter_per_token": 3.5,
+  "ozet": {
+    "playwright": {
+      "gorev": 5,
+      "ort_adim": 9.2,
+      "ort_token": 964,
+      "ort_sure": 247
+    },
+    "selenit": {
+      "gorev": 5,
+      "ort_adim": 4.8,
+      "ort_token": 1897,
+      "ort_sure": 34
+    }
+  }
+}
