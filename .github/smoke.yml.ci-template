@@ -1,0 +1,73 @@
+name: smoke
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  unit:
+    name: smoke (ruby ${{ matrix.ruby }} / ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        ruby: ["3.2", "3.3"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: false
+
+      - name: Install selenium-webdriver
+        run: gem install selenium-webdriver --no-document
+
+      - name: Ruby syntax check
+        run: |
+          for f in server.rb browser.rb snapshot.js policy.rb audit.rb recorder.rb replay.rb export_rspec.rb mcp_client.rb kiyas.rb benchmark.rb; do
+            case "$f" in *.rb) ruby -c "$f" ;; esac
+          done
+
+      - name: Install Google Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Start local scenario app
+        run: |
+          python3 testapp/server.py 8765 &
+          sleep 2
+          curl -fsS http://127.0.0.1:8765/ > /dev/null
+
+      - name: Start Chrome with remote debugging
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            google-chrome --headless=new --remote-debugging-port=19420 \
+              --user-data-dir="$PWD/artifacts/chrome-profile-19420" \
+              --no-first-run --no-default-browser-check about:blank &
+          else
+            "$(find /Applications -name 'Google Chrome' -maxdepth 4 | head -1)/Contents/MacOS/Google Chrome" \
+              --headless=new --remote-debugging-port=19420 \
+              --user-data-dir="$PWD/artifacts/chrome-profile-19420" \
+              --no-first-run about:blank &
+          fi
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:19420/json/version && break
+            sleep 1
+          done
+
+      - name: Smoke test (no model required)
+        env:
+          BENCH_MCP_PORT: "19420"
+        run: ruby smoke_test.rb
+
+      - name: Model-free replay of saved scenarios
+        env:
+          BENCH_MCP_PORT: "19420"
+        run: |
+          ruby replay.rb filter
+          ruby replay.rb form

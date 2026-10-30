@@ -11,3 +11,7 @@ artifacts/
 medium-draft*.md
 node_modules/
 tmp/
+
+# Deneme/yarım kalan kıyas koşuları (yalnız artifacts/ hariç, tam koşu bench/ altında)
+bench/kiyas-google-gemma-4-e4b-2026103*.json
+bench/kiyas-google-gemma-4-e4b-2026103020*.md

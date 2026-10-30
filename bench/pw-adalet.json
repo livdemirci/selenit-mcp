@@ -1,0 +1,13 @@
+{
+  "degisen_arac": 6,
+  "toplam_arac": 25,
+  "araclar": [
+    "browser_type",
+    "browser_click",
+    "browser_snapshot",
+    "browser_find",
+    "browser_navigate",
+    "browser_fill_form"
+  ],
+  "hata_kurali": 4
+}

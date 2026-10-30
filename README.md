@@ -1,9 +1,12 @@
 # selenit-mcp
 
+**Browser automation built for small local models.**
+Selenium-powered MCP server · compact `e1`-style snapshots · loop protection · deterministic replay · attaches to your own Chrome.
+
 [![npm](https://img.shields.io/npm/v/selenit-mcp.svg)](https://www.npmjs.com/package/selenit-mcp)
 [![license](https://img.shields.io/npm/l/selenit-mcp.svg)](LICENSE)
-
-**A Selenium-based browser MCP server built for small local models — tuned and benchmarked on Gemma E4B.**
+[![Ruby 3.2+](https://img.shields.io/badge/ruby-3.2%2B-CC342D)](https://www.ruby-lang.org)
+[![MCP](https://img.shields.io/badge/MCP-23%20tools-blue)](https://modelcontextprotocol.io)
 
 Most browser MCP servers are designed for large cloud models: rich accessibility trees, verbose
 output, plenty of tokens to spare. `selenit-mcp` goes the other way. It emits compact,
@@ -13,7 +16,179 @@ navigate, fill forms, and complete multi-step tasks without drowning in context.
 
 > 🇹🇷 Turkish documentation (detailed engineering log): [TURKCE.md](TURKCE.md)
 
-## Why Gemma E4B
+## Contents
+
+- [Head-to-head benchmark](#head-to-head-benchmark-against-playwright-mcp)
+- [Quick start](#quick-start)
+- [Why small models need a different tool surface](#why-small-models-need-a-different-tool-surface)
+- [Tools](#tools-23)
+- [Safety nets](#safety-nets)
+- [Explore → freeze → replay](#explore--freeze--replay)
+- [Policy and audit](#policy-and-audit)
+- [Configuration](#configuration)
+- [Reproducing the benchmark](#reproducing-the-benchmark)
+- [Honest comparison with Playwright MCP](#honest-comparison-with-playwright-mcp)
+
+## Head-to-head benchmark against Playwright MCP
+
+Same model, same machine, same task, same scoring rule, both tools with their own native tool
+surface. Task: *open the site, search for a term, report the first result heading as
+`title | url`*. A run passes only if a claimed heading's words actually exist in the live page
+text — invented headings are counted as failures, not successes.
+
+<!-- BENCH:BEGIN -->
+**Run 2026-10-30 · `google/gemma-4-e4b` (LM Studio, temperature 0, thinking off, max_tokens 1200, 16-step budget, 1 run per site, tool-output cap 2,000 chars/call)**
+
+| Tool | Tasks passed | Median steps | Median time | Median tool-output chars | Median tokens (prompt + completion) | Tokens / step |
+|---|---|---|---|---|---|---|
+| **selenit-mcp** | **2/5** | 3.0 | 67.7 s | 6,000 | 15,542 + 1,034 = **16,576** | 5,225 |
+| Playwright MCP | **0/5** | 3.0 | 100.4 s | 751 | 16,363 + 1,871 = **18,234** | 5,896 |
+
+| Site | Selenit | Playwright MCP | What happened |
+|---|---|---|---|
+| Wikipedia (EN) | **PASS** 4 steps, 72 s | FAIL 16 steps, 391 s | Playwright targeted `searchbox "Search Wikipe…"` and its `browser_type` errored 9 times on the same target — never answered. |
+| npm (EN) | **PASS** 3 steps, 54 s | FAIL 3 steps, 76 s | Playwright waited for a search field that the SPA injects; gave up and reported it could not proceed. |
+| GitHub (EN) | FAIL 3 steps, 61 s — *hallucinated* | FAIL 11 steps, 302 s | Selenit claimed "Repository search results · GitHub" — that page text did not exist. Caught by the scorer, not hidden. |
+| Hürriyet (TR) | FAIL 10 steps, 495 s | FAIL 3 steps, 100 s | Selenit burned the whole step budget returning an empty answer. |
+| Trendyol (TR) | FAIL 3 steps, 68 s — *hallucinated* | FAIL 2 steps, 41 s | Selenit claimed an "Arama Sonuçları - Trendyol" heading that was not on the page. |
+
+**What this run actually shows.** Selenit completed 2 of 5 tasks where Playwright MCP completed 0 —
+the gap is real and it is largest exactly where small models break down: when a tool call errors,
+Playwright's surface lets the model retry the same target until the step budget is gone (16 steps,
+391 s on Wikipedia), while Selenit's loop guard turns the third identical call into a directive and
+the model stops. But **2/5 is not a good result**. Four of the five real-site tasks are unsolved by at
+least one side, two Selenit "answers" were fabricated titles (correctly scored as failures), and the
+Turkish sites — which need SPA-ready search fields and bot-wall handling — failed on both sides.
+Total tokens are within 10% of each other, so this run does **not** support a "Selenit uses fewer
+tokens" claim either.
+
+The honest reading: on a 4B model, a tool surface that guards against loops buys task completion, but
+it does not yet make live-site search reliable. Treat 2/5 vs 0/5 as a direction, not a verdict, and
+re-run with `KOSUM=3` before quoting it anywhere.
+
+Compare with the earlier 5-site run on a large model (`deepseek-v4.1-flash`, `bench/kiyas-deepseek-adil.json`):
+**5/5 vs 1/5**, median 4.8 vs 9.2 steps. Same direction, much stronger signal — the tool-surface
+effect matters more for weaker models, but a stronger model can still complete the task through a
+worse surface.
+<!-- BENCH:END -->
+
+**Read this honestly.** These are small-N runs on live websites the author does not control:
+site markup changes, rate limits and bot walls move the numbers, and a single run is noisy. Use
+`KOSUM=3` for medians you intend to quote. The benchmark does **not** claim Selenium beats
+Playwright in general — it claims that a tool surface designed *for* small models changes task
+success rate and token burn.
+
+Token accounting: both sides use LM Studio's `usage.prompt_tokens` / `usage.completion_tokens`,
+summed over every step of a task. The per-call tool output fed back to the model is capped at
+2,000 characters on both sides, so neither side is penalised by a harness limit the other does
+not have.
+
+Reported in [this Medium article](https://medium.com/@livdemirci/selenit-mcp-vs-playwright-mcp-what-changes-when-you-design-for-small-models-26a15ab36d5b).
+
+## Quick start
+
+**One command** — checks/installs Ruby, the gem and Chrome, then registers the MCP server:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/livdemirci/selenit-mcp/main/install.sh | bash
+```
+
+If Ruby 3.2+ is already present (or you prefer npm only):
+
+```bash
+npx -y selenit-mcp setup lmstudio --install     # ruby+gem+Chrome check/install + config
+npx -y selenit-mcp doctor                       # report ruby/gem/Chrome/config/port
+```
+
+**npm only** — Ruby sources ship inside the package:
+
+```bash
+gem install selenium-webdriver        # requirement (not bundled)
+npx selenit-mcp                       # stdio MCP server — prints a "ready" line
+```
+
+MCP client config: `"command": "npx", "args": ["-y", "selenit-mcp"]`. Set `SELENIT_RUBY` in `env`
+to pin a specific Ruby.
+
+**From source:**
+
+```bash
+git clone https://github.com/livdemirci/selenit-mcp.git
+cd selenit-mcp
+gem install selenium-webdriver
+ruby bin/selenit-mcp
+```
+
+Requirements: Ruby 3.2+, Google Chrome, and the `selenium-webdriver` gem. macOS and Linux are
+tested; Windows is not — see [ROADMAP.md](ROADMAP.md).
+
+### Client configuration
+
+Claude Desktop / any MCP client (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "selenit-browser": {
+      "command": "npx",
+      "args": ["-y", "selenit-mcp"],
+      "env": { "BROWSER_MCP_PORT": "19419", "BROWSER_MCP_MAX_ELEMENTS": "20" }
+    }
+  }
+}
+```
+
+LM Studio — let the package write the entry itself (it resolves the absolute Ruby path, the
+package path, and backs up your existing config):
+
+```bash
+npx -y selenit-mcp setup lmstudio                 # default port 19419
+npx -y selenit-mcp setup lmstudio --port 19418 --max-elements 20
+npx -y selenit-mcp setup print                    # JSON only, paste it yourself
+```
+
+Then restart LM Studio (or toggle **Integrations**). Manual equivalent — an absolute Ruby path
+and `cwd` are required because a GUI-launched LM Studio may not have rbenv shims on `PATH`:
+
+```json
+{
+  "mcpServers": {
+    "selenit-browser": {
+      "command": "/Users/you/.rbenv/versions/3.4.8/bin/ruby",
+      "args": ["/path/to/selenit-mcp/server.rb"],
+      "cwd": "/path/to/selenit-mcp",
+      "env": { "BROWSER_MCP_PORT": "19419", "BROWSER_MCP_MAX_ELEMENTS": "40" }
+    }
+  }
+}
+```
+
+### Two Chrome modes
+
+| | Managed (isolated) | Existing (your session) |
+|---|---|---|
+| How | Agent launches Chrome with `--user-data-dir=artifacts/chrome-profile-<port>` | Chrome must already run with `--remote-debugging-port` |
+| Pro | Never touches your tabs/cookies | Reuses your logged-in session |
+| When | Automation, testing, assistant chat | Continuing work in a portal you are signed into |
+
+`BROWSER_MODE=managed|existing|auto` (default `auto`: attach if the port is open, otherwise launch).
+
+### Port separation
+
+Two MCP servers attaching to the same CDP port fight over the same Chrome — give each its own port.
+
+| Consumer | Port | Profile |
+|---|---|---|
+| Your assistant / coding agent | `19417` | `artifacts/chrome-profile-19417` |
+| LM Studio plugin | `19419` | `artifacts/chrome-profile-19419` |
+| Benchmark / replay | `19420` | `artifacts/chrome-profile-19420` |
+| selenit / your own Chrome | `19218` | your own profile |
+
+> **Warning:** port 19218 is the one selenit uses. If you do not want an agent driving your own
+> browser, use a separate port (recommended: **19419**). A normally started Chrome cannot be
+> attached to later; remote debugging is mandatory.
+
+## Why small models need a different tool surface
 
 | Design choice | Problem it solves for small models |
 |---|---|
@@ -21,7 +196,7 @@ navigate, fill forms, and complete multi-step tasks without drowning in context.
 | `e1`-style refs, renewed per snapshot | No CSS selectors to invent; fewer hallucinated locators |
 | Loop guard (same call 3× → warning, not execution) | Stops the classic scroll/read/snapshot death spiral |
 | Modal focus, overlay priority, row/card context | `Save` buttons in a dialog, `Add to cart` on product cards stay distinguishable |
-| Explicit waits + Turkish/English actionable errors | "ref is renewed every snapshot", "element is covered", "alert is open" |
+| Explicit waits + actionable errors | "ref is renewed every snapshot", "element is covered", "alert is open" |
 | Auto-recovery from JS alerts, stale elements, covered elements | The run continues instead of collapsing mid-task |
 
 **Measured on Gemma E4B** (`google/gemma-4-e4b`, 20 tools, max_tokens 800): **17/17 tasks passed**,
@@ -37,32 +212,6 @@ that discovery replays deterministically in ~30 s with no model at all.
    browser per call.
 3. The page dump marks only visible/interactive elements with `data-tw-ref` and produces short text.
 4. Session, window, and cookies persist across calls.
-
-### Two Chrome modes
-
-| | Managed (isolated) | Existing (your session) |
-|---|---|---|
-| How | Agent launches Chrome with `--user-data-dir=artifacts/chrome-profile-<port>` | Chrome must already run with `--remote-debugging-port` |
-| Pro | Never touches your tabs/cookies | Reuses your logged-in session |
-| When | Automation, testing, assistant chat | Continuing work in a portal you are signed into |
-
-`BROWSER_MODE=managed|existing|auto` (default `auto`: attach if the port is open, otherwise launch).
-
-### Port separation
-
-| Consumer | Port | Profile |
-|---|---|---|
-| OpenCode (this assistant) | `19417` | `artifacts/chrome-profile-19417` |
-| LM Studio plugin | `19419` | `artifacts/chrome-profile-19419` |
-| Benchmark / replay | `19420` | `artifacts/chrome-profile-19420` |
-| selenit / your own Chrome | `19218` | your own profile |
-
-Two servers attaching to the same port will fight over the same Chrome — give every browser MCP
-its own port.
-
-> **Warning:** port 19218 is the one selenit uses. If you do not want an agent driving your own
-> browser, use a separate port (recommended: **19419**). A normally started Chrome cannot be
-> attached to later; remote debugging is mandatory.
 
 ## Tools (23)
 
@@ -198,7 +347,6 @@ its own port.
   so the model does not have to scroll to discover what it already has. Measured on n11: Gemma
   scrolled 3× (third blocked by the loop guard) before reading the price that was already in the
   `browser_type` output — the status line makes that information explicit.
-
 - **URL-scheme fallback must validate the destination, not just the URL:** `submit_via_url` accepted
   any candidate that changed the URL and had ≥10 interactive elements. Measured on Hepsiburada:
   `/arama?q=kilim` is a **404 page** with 21 category links, and `/?s=kilim` renders the **home page**
@@ -220,6 +368,24 @@ its own port.
 | `load` | `document.readyState == complete` | — |
 | `download` | Chrome download state + file | `text` (file-name fragment) |
 
+## Explore → freeze → replay
+
+So the LLM does not pay on every run, a successful exploration becomes deterministic:
+
+1. `benchmark.rb` saves the steps and a durable CSS selector per element into `scenarios/<task>.json`
+   (`shadow::host||inner` for shadow DOM).
+2. `replay.rb` replays the same steps **without a model** and applies the same check.
+3. `export_rspec.rb` converts the scenario into a Selenium + RSpec spec with Page Objects and shared
+   explicit waits (`try_for`), runnable in CI.
+
+```bash
+ruby replay.rb filter                 # model-free replay
+ruby export_rspec.rb filter           # generates spec/generated/filter_spec.rb
+BROWSER_MCP_PORT=19419 rspec spec/generated/filter_spec.rb
+```
+
+All 18 scenarios replay model-free in ~60 s total; the 17 generated specs pass in ~6.7 s.
+
 ## Policy and audit
 
 ```bash
@@ -232,90 +398,9 @@ With `BROWSER_MCP_REQUIRE_APPROVAL=true`, buttons labelled delete/pay/send do no
 `confirm=true`; the model has to ask you first.
 
 Every tool call is appended to `artifacts/audit-YYYYMMDD.jsonl` (passwords/tokens masked, long
-text truncated).
+text truncated). See [SECURITY.md](SECURITY.md) for the threat model.
 
-## Install
-
-**One command** — checks/installs Ruby, the gem and Chrome, then registers the MCP server:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/livdemirci/selenit-mcp/main/install.sh | bash
-```
-
-If Ruby 3.2+ is already present (or you prefer npm only):
-
-```bash
-npx -y selenit-mcp setup lmstudio --install     # ruby+gem+Chrome check/install + config
-npx -y selenit-mcp doctor                       # report ruby/gem/Chrome/config/port
-```
-
-`--install` attempts `brew install ruby` / `gem install selenium-webdriver` when something is
-missing; add `--install-chrome` to also install Chrome via Homebrew. Without `--install`, `setup`
-only writes the config and tells you what is missing.
-
-**npm only** — Ruby sources ship inside the package:
-
-```bash
-gem install selenium-webdriver        # requirement (not bundled)
-npx selenit-mcp                        # stdio MCP server — prints a "ready" line
-```
-
-MCP client config: `"command": "npx", "args": ["-y", "selenit-mcp"]`. Set `SLENIT_RUBY` in `env`
-to pin a specific Ruby.
-
-**From source:**
-
-```bash
-git clone https://github.com/livdemirci/selenit-mcp.git
-cd selenit-mcp
-gem install selenium-webdriver
-ruby bin/selenit-mcp
-```
-
-Requirements: Ruby 3.2+, Google Chrome, and the `selenium-webdriver` gem.
-
-### Client configuration
-
-Claude Desktop / any MCP client (`claude_desktop_config.json`):
-
-```json
-{
-  "mcpServers": {
-    "selenit-browser": {
-      "command": "npx",
-      "args": ["-y", "selenit-mcp"],
-      "env": { "BROWSER_MCP_PORT": "19419", "BROWSER_MCP_MAX_ELEMENTS": "20" }
-    }
-  }
-}
-```
-
-LM Studio — let the package write the entry itself (it resolves the absolute Ruby path, the
-package path, and backs up your existing config):
-
-```bash
-npx -y selenit-mcp setup lmstudio                 # default port 19419
-npx -y selenit-mcp setup lmstudio --port 19418 --max-elements 20
-npx -y selenit-mcp setup print                    # JSON only, paste it yourself
-```
-
-Then restart LM Studio (or toggle **Integrations**). Manual equivalent — an absolute Ruby path
-and `cwd` are required because a GUI-launched LM Studio may not have rbenv shims on `PATH`:
-
-```json
-{
-  "mcpServers": {
-    "selenit-browser": {
-      "command": "/Users/you/.rbenv/versions/3.4.8/bin/ruby",
-      "args": ["/path/to/selenit-mcp/server.rb"],
-      "cwd": "/path/to/selenit-mcp",
-      "env": { "BROWSER_MCP_PORT": "19419", "BROWSER_MCP_MAX_ELEMENTS": "40" }
-    }
-  }
-}
-```
-
-### Environment variables
+## Configuration
 
 | Variable | Default | Description |
 |---|---|---|
@@ -334,16 +419,25 @@ and `cwd` are required because a GUI-launched LM Studio may not have rbenv shims
 | `BROWSER_MCP_FAILFAST` | `1.25` | Reject a missing selector this fast when the page is loaded |
 | `BROWSER_MCP_TOAST_WAIT` | `0.6` | Post-action toast harvest window (`0` disables) |
 
-## Testing and benchmarking
+## Reproducing the benchmark
 
 ```bash
-python3 testapp/server.py 8765 &        # local scenario pages
-ruby smoke_test.rb                      # 32/32 checks
-ruby replay.rb filter                   # scenario replay (real site scenarios too)
+# 1) local scenario pages + unit checks (no model needed)
+python3 testapp/server.py 8765 &
+ruby smoke_test.rb                      # 38/38 checks
+
+# 2) head-to-head against Playwright MCP (needs LM Studio's OpenAI-compatible server on :1234
+#    and Node/npx for @playwright/mcp)
+KOSUM=1 ruby kiyas.rb                   # 5 live sites, ~20 min
+KOSUM=3 SITE_FILTER=wikipedia ruby kiyas.rb
+BENCH_MODEL=minicpm5-2b ruby kiyas.rb
 ```
 
-`benchmark.rb` feeds the tool schemas to LM Studio's local OpenAI-compatible API, executes the
-model's calls against the real MCP server, and verifies the resulting page state:
+`kiyas.rb` writes `bench/kiyas-<model>-<timestamp>.json` (every step's trace, the page text used for
+scoring, and token counts) plus a paste-ready `.md` summary. Failures are preserved in the JSON — the
+suite never silently drops a bad run.
+
+`benchmark.rb` runs the task set against LM Studio without the comparison side:
 
 ```bash
 ruby benchmark.rb                      # all tasks
@@ -355,7 +449,7 @@ BENCH_THINKING=0 BENCH_MAX_TOKENS=1600 ruby benchmark.rb sepet
 Hard scenarios in `testapp/`: `login`, `filter`, `frame`, `shadow`, `upload`, `newtab`, `dynamic`,
 `download`.
 
-### Measured results (Gemma E4B, 17 tasks)
+### Measured results (Gemma E4B, 17 local tasks)
 
 | Task | Steps | Time | Task | Steps | Time |
 |---|---|---|---|---|---|
@@ -372,31 +466,13 @@ Hard scenarios in `testapp/`: `login`, `filter`, `frame`, `shadow`, `upload`, `n
 Real-site task `sepet` (Trendyol: search → sort by lowest price → add to cart → verify price in the
 cart): **1/1 passed** with Gemma E4B, thinking off, 13 steps (~439 s); replay without a model ~30 s.
 
-## Explore → freeze → replay
-
-So the LLM does not pay on every run, a successful exploration becomes deterministic:
-
-1. `benchmark.rb` saves the steps and a durable CSS selector per element into `scenarios/<task>.json`
-   (`shadow::host||inner` for shadow DOM).
-2. `replay.rb` replays the same steps **without a model** and applies the same check.
-3. `export_rspec.rb` converts the scenario into a Selenium + RSpec spec with Page Objects and shared
-   explicit waits (`try_for`), runnable in CI or from selenit (F11).
-
-```bash
-ruby replay.rb filter                 # model-free replay
-ruby export_rspec.rb filter           # generates spec/generated/filter_spec.rb
-BROWSER_MCP_PORT=19419 rspec spec/generated/filter_spec.rb
-```
-
-All 18 scenarios replay model-free in ~60 s total; the 17 generated specs pass in ~6.7 s.
-
 ## Honest comparison with Playwright MCP
 
 **Where this server wins**
 
 | Topic | This server | Playwright MCP |
 |---|---|---|
-| Attaching to an existing browser | CDP attach to your open Chrome (the selenit F11 approach) | Manages its own browser instance |
+| Attaching to an existing browser | CDP attach to your open Chrome | Manages its own browser instance |
 | Small-model (4B) efficiency | 40-element ref list, ~4 KB cap, row/card context, modal focus | Large a11y tree, more tokens |
 | Audit / safety | `audit-*.jsonl` + host allowlist + approval for risky actions | Policies live in the client |
 | Loop protection | Same call 3× → warning, never locks up | None |
@@ -427,3 +503,13 @@ You are an agent doing browser automation. Call one tool per step.
 Use browser_snapshot to understand the page and select elements by refs like e1, e2.
 Never request long HTML or full page text; answer briefly.
 ```
+
+## Contributing
+
+Issues and PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). Especially useful right now:
+benchmark runs on models we have not measured yet (Qwen 3.5 4B/9B, LFM 1.7B, Hermes), Windows
+install reports, and real-site failure traces with the JSON attached.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
