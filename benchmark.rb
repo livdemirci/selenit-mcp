@@ -35,7 +35,22 @@ class Llm
       # Gemma gibi düşünmeli şablonlarda düşünme VARSAYILAN OLARAK KAPALI:
       # her adımda "Thinking Process" üretilmesin, araç çağrısı bütçesi verime
       # gitsin. Açmak için BENCH_THINKING=1.
-      **(ENV.fetch("BENCH_THINKING", "0") == "0" ? { chat_template_kwargs: { enable_thinking: false } } : {}),
+      # THINKING KAPATMA — ÇALIŞAN YOL.
+      #
+      # ÖLÇÜLDÜ (gemma-4-e4b, LM Studio): chat_template_kwargs.enable_thinking
+      # ARTIK ETKİSİZ. Model thinking üretip içeriği reasoning_content'e
+      # koyuyor, `content` BOŞ kalıyor. Deney: aynı prompt 10 kez -> 10 boş.
+      #
+      # Çalışan iki yol:
+      #   reasoning_effort: "none"  -> 6/6 temiz, küçük max_tokens ile (ASIL ÇÖZÜM)
+      #   max_tokens >= 800         -> 6/6 ama thinking maliyeti ödenir (yedek)
+      #
+      # İkisini birlikte gönderiyoruz: reasoning_effort kapıyı kapatır,
+      # max_tokens yeterli olursa model yine de cevap üretebilir.
+      **(ENV.fetch("BENCH_THINKING", "0") == "0" ? {
+        reasoning_effort: "none",
+        chat_template_kwargs: { enable_thinking: false }
+      } : {}),
       tools: tools.map do |t|
         {
           type: "function",

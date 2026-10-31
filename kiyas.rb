@@ -64,7 +64,13 @@ class Llm
       end,
       tool_choice: "auto"
     }
-    body[:chat_template_kwargs] = { enable_thinking: false } if THINKING == "0"
+    # THINKING KAPATMA — ÇALIŞAN YOL (ölçüldü: enable_thinking artık etkisiz,
+    # model thinking'i reasoning_content'e koyup content'i boş bırakıyor).
+    # reasoning_effort=none 6/6 temiz sonuç verdi.
+    if THINKING == "0"
+      body[:reasoning_effort] = "none"
+      body[:chat_template_kwargs] = { enable_thinking: false }
+    end
     body[:stream] = true if ENV["BENCH_STREAM"] == "1"
     http = Net::HTTP.new(uri.host, uri.port)
     http.open_timeout = 10
@@ -136,9 +142,14 @@ FAIL_RE = /could not|couldn't|unable|failed|not found|i can't|cannot|tamamlayama
 
 def words(a) = norm(a).split.select { |k| k.length >= 3 }
 
-def score(answer, page)
+def score(answer, page, thinking_leak: false)
   c = answer.to_s.strip
-  return { "ok" => false, "class" => "empty_answer" } if c.empty?
+  if c.empty?
+    # Thinking sızması ayrı sınıf: araç hatası DEĞİL, model yapılandırma sorunu.
+    return { "ok" => false, "class" => "thinking_leak" } if thinking_leak
+
+    return { "ok" => false, "class" => "empty_answer" }
+  end
   return { "ok" => false, "class" => "not_completed" } if c.match?(FAIL_RE)
 
   pn = norm(page)
@@ -173,6 +184,7 @@ def run_loop(llm, tools, call_tool, site)
   completion_tokens = 0
   answer = nil
   empty_retry = 0
+  thinking_leak = false
   started = Time.now
 
   MAX_STEPS.times do |i|
@@ -188,6 +200,13 @@ def run_loop(llm, tools, call_tool, site)
     calls = msg["tool_calls"] || []
     if calls.empty?
       answer = msg["content"].to_s.strip
+      # TEŞHİS: içerik boş ama reasoning dolu ise model THINKING moduna
+      # kaçmıştır. Bunu "empty_answer" diye saymak yanıltıcı: araç değil
+      # model yapılandırması bozuk demektir. Açıkça sınıflandır.
+      if answer.empty? && msg["reasoning_content"].to_s.strip.length > 20
+        answer = ""
+        thinking_leak = true
+      end
       if answer.empty? && empty_retry.zero?
         empty_retry += 1
         messages << { role: "user", content: "Your reply was empty. Continue the task with ONE tool call." }
@@ -215,6 +234,7 @@ def run_loop(llm, tools, call_tool, site)
 
   { trace: trace, out_chars: out_chars, answer: answer.to_s,
     prompt_tokens: prompt_tokens, completion_tokens: completion_tokens,
+    thinking_leak: thinking_leak,
     seconds: (Time.now - started).round(1) }
 end
 
@@ -229,11 +249,16 @@ def selenit_run(site, llm, run_no)
     ""
   end
   page = begin
-    mcp.call("browser_evaluate", { "script" => "return (document.body?document.body.innerText:'').slice(0,20000)" }).to_s
+    # ÖLÇÜT İÇİN TAM METİN. 20000 karakter büyük listelerde yetmiyor:
+    # ÖLÇÜLDÜ (trendyol): sayfa 31705 karakter, modelin verdiği DOĞRU başlık
+    # kesilen kısımda kaldı ve "hallucinated" damgası yedi. Araç hatası değil,
+    # ölçüt körlüğüydü. BROWSER_MCP_EVAL_MAX ile sınırsız oku.
+    ENV["BROWSER_MCP_EVAL_MAX"] ||= "60000"
+    mcp.call("browser_evaluate", { "script" => "return (document.body?document.body.innerText:'').slice(0,60000)" }).to_s
   rescue StandardError
     ""
   end
-  s = score(r[:answer], page)
+  s = score(r[:answer], page, thinking_leak: r[:thinking_leak])
   mcp.stop
   { "site" => site[:name], "tool" => "selenit", "run" => run_no, "pass" => s["ok"],
     "reason" => s["class"], "title" => s["title"].to_s, "claim" => s["claim"].to_s,
@@ -309,13 +334,14 @@ def pw_run(site, llm, run_no)
   # (sayfa hâlâ yükleniyor). İkinci deneme gerçek metni veriyor — bir kez yeniden dene.
   body = ""
   2.times do
-    body = pw.call("browser_evaluate", { "function" => "() => document.body ? document.body.innerText.slice(0,20000) : ''" }).to_s
+    # Playwright tarafı da aynı sınırla (eşitlik: iki araç aynı genişlikte okunur)
+    body = pw.call("browser_evaluate", { "function" => "() => document.body ? document.body.innerText.slice(0,60000) : ''" }).to_s
     break if body.length > 200
 
     sleep 1
   end
   page = body.to_s.length > 200 ? body.to_s : page
-  s = score(r[:answer], page)
+  s = score(r[:answer], page, thinking_leak: r[:thinking_leak])
   pw.stop
   { "site" => site[:name], "tool" => "playwright", "run" => run_no, "pass" => s["ok"],
     "reason" => s["class"], "title" => s["title"].to_s, "claim" => s["claim"].to_s,

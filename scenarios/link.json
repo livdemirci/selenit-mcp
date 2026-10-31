@@ -1,7 +1,7 @@
 {
   "task": "link",
   "desc": "example.com'daki bağlantıya tıkla, açılan sayfanın başlığını söyle",
-  "recorded_at": "2026-10-23T07:56:04+0300",
+  "recorded_at": "2026-10-31T08:15:05+0300",
   "model": "google/gemma-4-e4b",
   "answer": "Açılan sayfanın başlığı \"Example Domains | https://www.iana.org/help/example-domains\" şeklindedir.",
   "final_url": "https://www.iana.org/help/example-domains",

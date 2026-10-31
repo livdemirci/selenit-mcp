@@ -816,6 +816,41 @@ class SelenitBrowser
     false
   end
 
+  # Sayfada modal/overlay açık mı? snapshot.js'in modal tespitiyle AYNI ölçüt:
+  # görünür VE ekran merkezini kapsayan bir dialog/modal adayı olmalı.
+  # (Yalnızca "class'ında modal geçiyor" demek yanlış pozitif üretiyordu.)
+  def modal_acik?
+    driver.execute_script(<<~JS) ? true : false
+      var cands = document.querySelectorAll(
+        '[aria-modal="true"],[role="dialog"],dialog[open],' +
+        '[class*="modal" i],[class*="dialog" i],[class*="popup" i]');
+      var cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+      var hit = null;
+      try { hit = document.elementFromPoint(cx, cy); } catch (e) { return false; }
+      if (!hit) return false;
+      for (var i = 0; i < cands.length; i++) {
+        var c = cands[i], r = c.getBoundingClientRect();
+        if (r.width <= 0 || r.height <= 0) continue;
+        var s = window.getComputedStyle(c);
+        if (s.visibility === "hidden" || s.display === "none" || s.opacity === "0") continue;
+        if ((c === hit || c.contains(hit)) && r.width > 120 && r.height > 80) return true;
+      }
+      return false;
+    JS
+  rescue StandardError
+    false
+  end
+
+  # Öğe gerçek bir yazı alanı mı (<input>/<textarea>/contenteditable)?
+  def yazi_alani_mi?(element)
+    etiket = element.tag_name.to_s.downcase
+    return true if %w[input textarea].include?(etiket)
+
+    element.attribute("contenteditable").to_s == "true"
+  rescue StandardError
+    false
+  end
+
   def varsayilan_giris_alani
     index = driver.execute_script(GIRIS_ALANI_JS)
     return nil if index.nil?
@@ -881,9 +916,41 @@ class SelenitBrowser
           raise
         end
 
+        # MODAL KORUMASI — ÖLÇÜLDÜ (trendyol, gemma-4-e4b):
+        # Ana sayfa "Cinsiyet seç" modalı açıyor; arka plan gizlendiği için
+        # modelin verdiği ref görünmez. Eski kod öğeyi geçici görünür yapıp
+        # yazıyordu → "yazıldı: e1" dönüyor, ama arama HİÇ yapılmıyor. Model
+        # başarılı sanıp 5 adım sonra uyduruyor.
+        # Görünmezlik modal kaynaklıysa SESSİZCE yazma: modele modalı söyle.
+        if modal_acik? && yazi_alani_mi?(gizli)
+          return "HATA (type): sayfada MODAL açık ve hedef alan onun ARKASINDA gizli; " \
+                 "buraya yazmak aramayı ÇALIŞTIRMAZ. ÖNCE modalı kapat: modal içindeki " \
+                 "bir SEÇENEĞE browser_click ile tıkla (ör. bir <div>/<li> seçenek) ya da " \
+                 "kapatma düğmesine bas. Sonra browser_snapshot alıp GÜNCEL ref ile yaz."
+        end
+
         gecici_gorunur_yap(gizli)
         gizli
       end
+    end
+
+    # YAZI ALANI DEĞİL KORUMASI — ÖLÇÜLDÜ (trendyol, gemma-4-e4b):
+    # Modal içindeki <div>Kadın</div> seçeneğine model browser_type çağırdı.
+    # Öğe "görünür" olduğu için resolve başarılı oldu; kod JS ile yazdı ve
+    # "yazıldı" döndü — ama div'e yazı olmaz, tıklama olarak yorumlandı ve
+    # sayfa "Kadın butiği"ne gitti. Model sonra olmayan bir arama sonucu uydurdu.
+    # Bir yazı alanı olmayan öğeye yazmayı REDDET: doğru aracı göster.
+    unless yazi_alani_mi?(element)
+      etiket = begin
+        element.tag_name.to_s.downcase
+      rescue StandardError
+        "?"
+      end
+      return "HATA (type): hedef <#{etiket}> bir YAZI ALANI DEĞİL. " \
+             "Yazma yalnızca <input>/<textarea>/contenteditable öğelerine yapılır. " \
+             "Bu bir SEÇENEK/düğme/bağlantıysa browser_click ile TIKLA. " \
+             "Arama kutusunu bulmak için: browser_find(role: 'searchbox') ya da browser_snapshot al; " \
+             "modal açıksa önce modalı kapat."
     end
     # OTOMATİK SUBMIT: model arama kutusuna yazıp Enter'ı unutursa görev
     # ölür (ölçüm: <input>'a "CLA" yazıldı, submit verilmedi, sayfa
@@ -959,6 +1026,19 @@ class SelenitBrowser
       element = yeniden_coz(ref, selector)
       retry
     rescue Selenium::WebDriver::Error::ElementNotInteractableError
+      # MODAL KORUMASI — ÖLÇÜLDÜ (trendyol, gemma-4-e4b): modal açıkken hedef
+      # alan "görünür ama tıklanamaz" durumda (pointer-events:none / örtü).
+      # Aşağıdaki JS-yazma yolu bunu sessizce "yazıldı" diye raporluyor, ama
+      # ARAMA ÇALIŞMIYOR: model 5 adım sonra başlık uyduruyor.
+      # Görünmezliğin kaynağı modal ise yazmayı DENEME, modele modalı söyle.
+      if modal_acik?
+        return "HATA (type): sayfada MODAL açık; hedef alan onun arkasında ve " \
+               "etkileşime kapalı. Buraya yazmak aramayı ÇALIŞTIRMAZ. " \
+               "ÖNCE modalı kapat: içindeki bir SEÇENEĞE browser_click ile tıkla " \
+               "(ör. <div>/<li> seçenek) ya da kapatma düğmesine bas. " \
+               "Sonra browser_snapshot al ve GÜNCEL ref ile yaz."
+      end
+
       # liste-sayfası ölçümü: arama input'u görünür (rect 418x52, display
       # inline-block) ama pointerEvents:none; merkezinde overlay açan bir DIV
       # var. O DIV'e tıklamak input'u tıklanabilir yapıyor — ama tıklama DOM'u
@@ -2314,7 +2394,23 @@ class SelenitBrowser
     items = data["items"] || []
     body = items.map { |i| format_item(i) }.join("\n")
     more = data["total"].to_i > items.size ? "\n… #{data['total']} etkileşimli öğeden #{items.size} tanesi" : ""
-    modal_note = data["modal"] ? "MODAL AÇIK (arka plan gizlendi)\n" : ""
+    # MODAL NOTU — modele SONRAKİ ADIMI söyle.
+    #
+    # ÖLÇÜLDÜ (trendyol, gemma-4-e4b): ana sayfa bir "Cinsiyet seç" modalı
+    # açıyor (modele göre 500x412). Model modalı görüyor, ama içindeki
+    # <div>Kadın</div> öğesini ARAMA KUTUSU sanıp browser_type çağırıyor:
+    # div'e yazılamaz, arama hiç yapılmıyor, model 5 adım harcayıp uyduruyor.
+    # Eski not yalnızca "MODAL AÇIK (arka plan gizlendi)" diyordu — model ne
+    # yapacağını bilmiyordu.
+    modal_note =
+      if data["modal"]
+        "MODAL AÇIK — arka plan gizli. ÖNCE bu modalı kapat/seç ve devam et. " \
+        "Modal içindeki <div>/<li>/<span> SEÇENEKLERİNİ browser_click ile TIKLA " \
+        "(browser_type YALNIZCA <input>/<textarea> içindir; div'e yazılmaz). " \
+        "Kapatma düğmesi yoksa bir seçenek seçmek modalı kapatır.\n"
+      else
+        ""
+      end
     tabs_note =
       begin
         handles = driver.window_handles
@@ -2441,13 +2537,25 @@ class SelenitBrowser
         rescue StandardError
           "durum okunamadı"
         end
+        # ÖLÇÜLDÜ (trendyol): modal içindeki <div>Kadın</div> bir SEÇENEK,
+        # yazı alanı değil. Model bunu arama kutusu sanıp type çağırıyor.
+        # Tıklanabilir ama yazılamaz öğeler için açık yönlendirme ver.
+        etiket = begin
+          mevcut.tag_name.to_s.downcase
+        rescue StandardError
+          ""
+        end
+        yazilamaz = %w[div span li a button label h1 h2 h3 h4 h5 h6].include?(etiket)
+        ek_not = yazilamaz ? " NOT: bu öğe <#{etiket}> — YAZI ALANI DEĞİL. Modal/seçenek içindeki " \
+                             "<div>/<span>/<li> öğelerine yazılmaz; browser_click ile TIKLANIR. " \
+                             "Arama kutusu <input> olmalıdır." : ""
         raise Selenium::WebDriver::Error::TimeoutError,
               "ÖĞE VAR AMA TIKLANAMIYOR (#{ref || selector}) — #{durum}. " \
               "Bu genellikle öğenin kapalı bir menü/overlay içinde olması ya da " \
               "özel bir web bileşeninin (closed shadow DOM) açılması gerektiği anlamına gelir. " \
               "AYNI REF'E TEKRAR TIKLAMA. Bunun yerine: (1) menüyü açan üst öğeye tıkla, " \
               "(2) sayfada aynı hedefe giden doğrudan bir bağlantı ara (browser_find ile), " \
-              "(3) hedefe URL üzerinden git, (4) hiçbiri yoksa bu yolu başarısız say ve görevi cevapla."
+              "(3) hedefe URL üzerinden git, (4) hiçbiri yoksa bu yolu başarısız say ve görevi cevapla." + ek_not
       end
 
       raise
