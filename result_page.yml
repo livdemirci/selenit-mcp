@@ -1,0 +1,751 @@
+- generic [active] [ref=f83e1]:
+  - iframe [ref=f83e620]:
+    - button [ref=f113e5]
+  - iframe [ref=f83e621]:
+    - button [ref=f115e5]
+  - generic [ref=f83e2]:
+    - banner [ref=f83e3]:
+      - generic [ref=f83e4]:
+        - generic [ref=f83e5] [cursor=pointer]
+        - generic [ref=f83e9]:
+          - generic [ref=f83e10]:
+            - link [ref=f83e11] [cursor=pointer]:
+              - /url: https://www.hurriyet.com.tr/
+              - img "Hürriyet - Haber, Son Dakika Haberler, Güncel Gazete Haberleri" [ref=f83e12]
+            - generic [ref=f83e13] [cursor=pointer]: ×
+          - generic [ref=f83e14]:
+            - generic [ref=f83e16] [cursor=pointer]:
+              - generic [ref=f83e17]: İstanbul
+              - generic [ref=f83e18]: 15°
+            - list [ref=f83e22]:
+              - listitem [ref=f83e23]:
+                - link "GÜNDEM" [ref=f83e24] [cursor=pointer]:
+                  - /url: https://www.hurriyet.com.tr/gundem/
+              - listitem [ref=f83e25]:
+                - link "DÜNYA" [ref=f83e26] [cursor=pointer]:
+                  - /url: https://www.hurriyet.com.tr/dunya/
+              - listitem [ref=f83e27]:
+                - link "+ BİGPARA" [ref=f83e28] [cursor=pointer]:
+                  - /url: javascript:;
+                - list:
+                  - listitem [ref=f83e29]:
+                    - link "ANASAYFA" [ref=f83e30] [cursor=pointer]:
+                      - /url: https://bigpara.hurriyet.com.tr/
+                  - listitem [ref=f83e31]:
+                    - link "BORSA" [ref=f83e32] [cursor=pointer]:
+                      - /url: https://bigpara.hurriyet.com.tr/borsa/canli-borsa/
+                  - listitem [ref=f83e33]:
+                    - link "DÖVİZ" [ref=f83e34] [cursor=pointer]:
+                      - /url: https://bigpara.hurriyet.com.tr/doviz/
+                  - listitem [ref=f83e35]:
+                    - link "ALTIN" [ref=f83e36] [cursor=pointer]:
+                      - /url: https://bigpara.hurriyet.com.tr/altin/
+                  - listitem [ref=f83e37]:
+                    - link "VİOP&VARANT" [ref=f83e38] [cursor=pointer]:
+                      - /url: https://bigpara.hurriyet.com.tr/viop-varant/
+                  - listitem [ref=f83e39]:
+                    - link "ANALİZ" [ref=f83e40] [cursor=pointer]:
+                      - /url: https://bigpara.hurriyet.com.tr/analiz/
+                  - listitem [ref=f83e41]:
+                    - link "KOBİ" [ref=f83e42] [cursor=pointer]:
+                      - /url: https://bigpara.hurriyet.com.tr/kobi/
+                  - listitem [ref=f83e43]:
+                    - link "KRİPTO PARALAR" [ref=f83e44] [cursor=pointer]:
+                      - /url: https://bigpara.hurriyet.com.tr/kripto-paralar/
+              - listitem [ref=f83e45]:
+                - link "+ SPOR ARENA" [ref=f83e46] [cursor=pointer]:
+                  - /url: javascript:;
+                - list:
+                  - listitem [ref=f83e47]:
+                    - link "ANASAYFA" [ref=f83e48] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/sporarena/
+                  - listitem [ref=f83e49]:
+                    - link "FUTBOL" [ref=f83e50] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/sporarena/futbol/
+                  - listitem [ref=f83e51]:
+                    - link "BASKETBOL" [ref=f83e52] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/sporarena/basketbol/
+                  - listitem [ref=f83e53]:
+                    - link "VOLEYBOL" [ref=f83e54] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/sporarena/voleybol/
+                  - listitem [ref=f83e55]:
+                    - link "CANLI SKOR" [ref=f83e56] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/sporarena/canli-skor/
+              - listitem [ref=f83e57]:
+                - link "+ KELEBEK" [ref=f83e58] [cursor=pointer]:
+                  - /url: javascript:;
+                - list:
+                  - listitem [ref=f83e59]:
+                    - link "ANASAYFA" [ref=f83e60] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/kelebek-magazin/
+                  - listitem [ref=f83e61]:
+                    - link "EKRANDA" [ref=f83e62] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/televizyon/
+                  - listitem [ref=f83e63]:
+                    - link "HAYAT" [ref=f83e64] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/hayat/
+                  - listitem [ref=f83e65]:
+                    - link "SEYAHAT" [ref=f83e66] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/seyahat/
+                  - listitem [ref=f83e67]:
+                    - link "STİL" [ref=f83e68] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/stil/
+                  - listitem [ref=f83e69]:
+                    - link "FAKİR HAUSGERATE İLE LEZZETLİ TARİFLER" [ref=f83e70] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/kelebek/fakir-hausgerate-ile-lezzetli-tarifler/
+                  - listitem [ref=f83e71]:
+                    - link "SAĞLIK" [ref=f83e72] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/haberleri/saglik
+              - listitem [ref=f83e73]:
+                - link "+ YAŞAM" [ref=f83e74] [cursor=pointer]:
+                  - /url: javascript:;
+                - list:
+                  - listitem [ref=f83e75]:
+                    - link "ANASAYFA" [ref=f83e76] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/yasam/
+                  - listitem [ref=f83e77]:
+                    - link "CUMARTESİ" [ref=f83e78] [cursor=pointer]:
+                      - /url: "https://www.hurriyet.com.tr/cumartesi/ "
+                  - listitem [ref=f83e79]:
+                    - link "PAZAR" [ref=f83e80] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/pazar/
+                  - listitem [ref=f83e81]:
+                    - link "LEZZETLİ HAYAT" [ref=f83e82] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/lezzetli-hayat/
+                  - listitem [ref=f83e83]:
+                    - link "ÇOCUKLA HAYAT" [ref=f83e84] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/cocuklu-hayat/
+                  - listitem [ref=f83e85]:
+                    - link "SEYAHAT" [ref=f83e86] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/seyahat/
+              - listitem [ref=f83e87]:
+                - link "YAZARLAR" [ref=f83e88] [cursor=pointer]:
+                  - /url: https://www.hurriyet.com.tr/yazarlar/
+              - listitem [ref=f83e89]:
+                - link "RESMİ İLANLAR" [ref=f83e90] [cursor=pointer]:
+                  - /url: https://www.hurriyet.com.tr/resmi-ilanlar/
+              - listitem [ref=f83e91]:
+                - link "ASTROLOJİ" [ref=f83e92] [cursor=pointer]:
+                  - /url: "https://www.hurriyet.com.tr/mahmure/astroloji/ "
+              - listitem [ref=f83e93]:
+                - link "+ TÜMÜ" [ref=f83e94] [cursor=pointer]:
+                  - /url: javascript:;
+                - list:
+                  - listitem [ref=f83e95]:
+                    - link "EKONOMİ" [ref=f83e96] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/ekonomi/
+                  - listitem [ref=f83e97]:
+                    - link "TV REHBERİ" [ref=f83e98] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/tv-rehberi/
+                  - listitem [ref=f83e99]:
+                    - link "MAHMURE" [ref=f83e100] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/mahmure/
+                  - listitem [ref=f83e101]:
+                    - link "HÜRRİYET AİLE" [ref=f83e102] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/aile/
+                  - listitem [ref=f83e103]:
+                    - link "VİDEO" [ref=f83e104] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/video/
+                  - listitem [ref=f83e105]:
+                    - link "ASTROLOJİ" [ref=f83e106] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/astroloji/
+                  - listitem [ref=f83e107]:
+                    - link "HESAPLAMA ARAÇLARI" [ref=f83e108] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/hesaplama-araclari/
+                  - listitem [ref=f83e109]:
+                    - link "BULMACA" [ref=f83e110] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/bulmaca-coz/
+                  - listitem [ref=f83e111]:
+                    - link "EN İYİ ON" [ref=f83e112] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/en-iyi-on/
+                  - listitem [ref=f83e113]:
+                    - link "LEZİZZ" [ref=f83e114] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/lezizz/
+                  - listitem [ref=f83e115]:
+                    - link "TEKNOLOJİ" [ref=f83e116] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/teknoloji/
+                  - listitem [ref=f83e117]:
+                    - link "FOTO GALERİ" [ref=f83e118] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/foto-galeri/
+                  - listitem [ref=f83e119]:
+                    - link "RAMAZAN" [ref=f83e120] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/ramazan/
+                  - listitem [ref=f83e121]:
+                    - link "KİTAP SANAT" [ref=f83e122] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/kitap-sanat/
+                  - listitem [ref=f83e123]:
+                    - link "HAVA DURUMU" [ref=f83e124] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/hava-durumu/
+                  - listitem [ref=f83e125]:
+                    - link "AVRUPA" [ref=f83e126] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/avrupa/
+                  - listitem [ref=f83e127]:
+                    - link "EĞİTİM" [ref=f83e128] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/egitim/
+                  - listitem [ref=f83e129]:
+                    - link "HÜRRİYET İK" [ref=f83e130] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/ik/
+                  - listitem [ref=f83e131]:
+                    - link "SON DAKİKA" [ref=f83e132] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/son-dakika-haberleri/
+                  - listitem [ref=f83e133]:
+                    - link "YEREL HABERLER" [ref=f83e134] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/yerel-haberler/
+                  - listitem [ref=f83e135]:
+                    - link "BİZE ULAŞIN" [ref=f83e136] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/bizeulasin/
+                  - listitem [ref=f83e137]:
+                    - link "VERİ POLİTİKASI" [ref=f83e138] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/kisisel-verilerin-korunmasi/
+                  - listitem [ref=f83e139]:
+                    - link "ENERJİ POLİTİKASI" [ref=f83e140] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/enerji-politikasi/
+                  - listitem [ref=f83e141]:
+                    - link "KÜNYE" [ref=f83e142] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/kunye/
+            - link "Günlük Egazete" [ref=f83e143] [cursor=pointer]:
+              - /url: https://e-gazete.hurriyet.com.tr/
+            - generic [ref=f83e144]:
+              - link "Hürriyet NSosyal" [ref=f83e145] [cursor=pointer]:
+                - /url: https://sosyal.teknofest.app/@hurriyet
+              - link "Hürriyet Facebook" [ref=f83e146] [cursor=pointer]:
+                - /url: https://www.facebook.com/hurriyet/
+              - link "Hürriyet Twitter" [ref=f83e147] [cursor=pointer]:
+                - /url: https://x.com/Hurriyet
+              - link "Hürriyet Linkedin" [ref=f83e148] [cursor=pointer]:
+                - /url: https://www.linkedin.com/company/hurriyet/
+              - link "Hürriyet Youtube" [ref=f83e149] [cursor=pointer]:
+                - /url: https://www.youtube.com/user/hurriyettvcom
+              - link "Hürriyet Instagram" [ref=f83e150] [cursor=pointer]:
+                - /url: https://www.instagram.com/hurriyetcomtr/
+            - generic [ref=f83e151]: © Copyright 2026 Hürriyet Gazetecilik ve Matbaacılık A.Ş
+            - generic [ref=f83e152]:
+              - link "Kullanım Koşulları" [ref=f83e153] [cursor=pointer]:
+                - /url: https://www.hurriyet.com.tr/kullanim-kosullari/
+              - text: ","
+              - link "Gizlilik Politikası" [ref=f83e154] [cursor=pointer]:
+                - /url: https://www.hurriyet.com.tr/veri-politikasi/
+              - text: ","
+              - link "İletişim" [ref=f83e155] [cursor=pointer]:
+                - /url: https://www.hurriyet.com.tr/bizeulasin/
+              - text: için bu linkleri kullanabilirsiniz. Login olduğunuz taktirde kullanım koşullarını ve gizlilik politikasını kabul etmiş olursunuz.
+            - generic [ref=f83e156]:
+              - link "Hürriyet sondakika haber ios uygulaması" [ref=f83e157] [cursor=pointer]:
+                - /url: https://apps.apple.com/tr/app/h%C3%BCrriyet-son-dakika-haberler/id307878588?l=tr
+              - link "Hürriyet sondakika haber android uygulaması" [ref=f83e158] [cursor=pointer]:
+                - /url: https://play.google.com/store/apps/details?id=hurriyet.mobil.android&gl=TR
+        - link "header-logo" [ref=f83e159] [cursor=pointer]:
+          - /url: /
+          - img "son dakika haberler" [ref=f83e160]
+        - generic [ref=f83e161]:
+          - link "GÜNDEM" [ref=f83e162] [cursor=pointer]:
+            - /url: https://www.hurriyet.com.tr/gundem/
+          - link "DÜNYA" [ref=f83e163] [cursor=pointer]:
+            - /url: https://www.hurriyet.com.tr/dunya/
+          - link "BİGPARA" [ref=f83e164] [cursor=pointer]:
+            - /url: https://bigpara.hurriyet.com.tr/
+          - link "SPOR ARENA" [ref=f83e165] [cursor=pointer]:
+            - /url: https://www.hurriyet.com.tr/sporarena/
+          - link "KELEBEK" [ref=f83e166] [cursor=pointer]:
+            - /url: https://www.hurriyet.com.tr/kelebek-magazin/
+          - link "YAŞAM" [ref=f83e167] [cursor=pointer]:
+            - /url: https://www.hurriyet.com.tr/yasam/
+          - link "YAZARLAR" [ref=f83e168] [cursor=pointer]:
+            - /url: https://www.hurriyet.com.tr/yazarlar/
+          - link "RESMİ İLANLAR" [ref=f83e169] [cursor=pointer]:
+            - /url: https://www.hurriyet.com.tr/resmi-ilanlar/
+          - link "SON DAKİKA" [ref=f83e170] [cursor=pointer]:
+            - /url: https://www.hurriyet.com.tr/son-dakika-haberleri/
+        - generic [ref=f83e171]:
+          - button "Hürriyet Arama" [ref=f83e172] [cursor=pointer]
+          - link "15" [ref=f83e174] [cursor=pointer]:
+            - /url: /bildirimler/
+            - generic "Hürriyet Bildirimler" [ref=f83e175]: "15"
+          - link "GİRİŞ" [ref=f83e177] [cursor=pointer]:
+            - /url: https://u.hurriyet.com.tr/accounts/login?lasturl=https://www.hurriyet.com.tr/galeri-yapay-zeka-ajanlari-insanlar-olmadan-aksam-yemeginde-bulustu-kendi-aralarinda-ne-konustular-43356946
+    - generic [ref=f83e178]:
+      - iframe [ref=f83e625]:
+        - button [ref=f110e2]
+      - iframe [ref=f83e629]:
+        - link [ref=f112e2] [cursor=pointer]:
+          - /url: https://googleads.g.doubleclick.net/pcs/click?xai=AKAOjsuETdvgnlt7kOg6pq5OTbohVEBbGjVr0lGfDi2zurF-NKleAvWCaJfin4TijscefOlSyEqclj_J-HlARDIDNs34osPk7jBMXX-Y4CToE-7UzEpFfv4USUhRqtsqwyRc4N4cngyeZC_FcxL-EmlliJCWcDg77Bw9lvcZsD3i4CuRBOCNcZZOaRPpZsLLfiEcK32NJ28JvkIbPsn0IZ6yNZmJjbNQ1pbdzvFwF2pEUigBVtZ1EgyTfWiN_sZLTbXh-hnojQ84whOnL1KysEw-gh_Pw-7Qw7RxFTvAYkwP6H3f1tsygwGXFXx2PRyF7IPjp4oO0OuQfY52Ronf0paaGWigKOaHVJsUtUPxnvWhDiRmcjybNxhJ7Wta7nOPW8VQALQWt8dEwJ-xHKsAzDC1_dD-NdTga1Y9aCYDsWv_5O-kuI94vS8&sai=AMfl-YTfDU6HWwi4c_05mtw5dtQhGuH3npacBUUKnG22EEC48ovONaS-KQwGUW_VtS80PM_SCpfbqG9rEDkg6GtR-0Y-Y_Ecri0cjRNc79ae39u7aY6JKmnI4vUt96UrM9V8w_i4dgMPsLAACTrnkanQjx5UA_rIjBvJWfhtjzdqwqp1ZPGI8JZeNLINgi69wPztNJ6Bo_2WCYTOOpxljcFVCYSp-m0oZqMMLa0Q7PORc2M3Mj_uZH9Hfs1xmQCJgo8lsF8VISzP958kFG4-jK5IbBoE9dMSGcx54ae7UgcPik91K1_JtPctUwZqRvhzb5PyNg0b9Mw2HBvhxkvS6oo42tf31fsDRHylkRQm1qwNxCTPbxpBlgv48W_Sr1WnxBMVOrUy-6iZgEUpegZA743xI7YD&sig=Cg0ArKJSzDOvLjdLQaSs&fbs_aeid=%5Bgw_fbsaeid%5D&adurl=https://gdetr.hit.gemius.pl/hitredir/id%3DzChAVDhjM93Yv6OKN5RPGsexXrGw8AdPANsWR3zYMbT.q7/fastid%3Dlpdivzfezbrkppfoszwoogxnhing/stparam%3Dpejgfwghpv/nc%3D0/gdpr%3D0/gdpr_consent%3D/url%3Dhttps://www.casper.com.tr/casper-nirvana-s100-p-188%3Futm_campaign%3DDisplay-September-2026%26utm_source%3Dnirvana-s100-tracking%26utm_medium%3D%252FDisplay%252FMedyanet%252Fnirvana_s100_120x600_ps_sol%26utm_source%3DMedyanet%26utm_medium%3Dnirvana_s100_120x600_ps_sol%26utm_campaign%3DDisplay-September-2026
+      - iframe [ref=f83e633]:
+        - link [ref=f114e2] [cursor=pointer]:
+          - /url: https://googleads.g.doubleclick.net/pcs/click?xai=AKAOjsuXPqk2DYzpttnc_SsrnUPv-fstUlZqMLRAuaER826SHLSA4ztEMAfdo5tKeN1Mwgq1G33TgiXuLqwbUYWmwD9KMrjxSH3udIFWO8imgvxSrIN3bWDkDFuWnPRsWsiMLadapbD4_EzDj9SzB3jFYl2H5BpH8SPAba-kg195QCit--xs_RLKdN1CNcyWGkg8Q4dyh4ZEMy_Zp_Sfa5PLTM5_uXlcRBwMyyQkhNJkqkYokFGk-NbHHKb3hKiWqEQKCY6FpNYgzfFZjMaZhohyw1tPAM7fz8J_A9NktGc5NaNEiiCZrqgagyP7VtYScANiwdMdJhGLcd6Xddm53wu1MiO2pa0ABDcbPmQX7u5q4-rcXj764By5p-Oc3hNzRHKXrSm_JtdARekx-PlGH6Ajt5gzr2IRQOQnRG2QQYQ&sai=AMfl-YR9Cis1SSQo4Emr4Fv7s6DS9DgDmOyrGRz4G_pgYuLdGcbbGLqWuNMT4z7tbLtHtVS9WiKdzk3t7cvldmpIbRjB0L2Naqjlnb7p1H7w--AgEHPS2NC_VDGSwvbHjotW5DFaEkZCJVGcQtyPfZ-Jr0SiBvyqTgK7kn_S6VCo25w7WKESD9mSVwva4feEx3eMcsAw0zUB_mcYuNDfbQnVhk9hgsCvMmvO6qQppQ5PdTlr86-jIoo2LMmaU21Um3hbhQ41n_QYtJB61C1bfMTgsBd-73x_YVOiLkMOOpH7h3PxVp9xnfmCF7TMHTXi9cA0PrVZkpB42SSFp_SF_nKHnAHAOJsEUsVQJZrUFQJxqkt8ozePuvkDgVrQjZLLWETK2_WiLFWXP7rEzXYsdbMCxFgn&sig=Cg0ArKJSzGSwSee4aE3e&fbs_aeid=%5Bgw_fbsaeid%5D&adurl=https://gdetr.hit.gemius.pl/hitredir/id%3DzChAVDhjM93Yv6OKN5RPGsexXrGw8AdPANsWR3zYMbT.q7/fastid%3Dgksriyfdinmkzpadqxictvfyyvnc/stparam%3Dybetkojjfg/nc%3D0/gdpr%3D0/gdpr_consent%3D/url%3Dhttps://www.casper.com.tr/casper-nirvana-s100-p-188%3Futm_campaign%3DDisplay-September-2026%26utm_source%3Dnirvana-s100-tracking%26utm_medium%3D%252FDisplay%252FMedyanet%252Fnirvana_s100_120x600_ps_sag%26utm_source%3DMedyanet%26utm_medium%3Dnirvana_s100_120x600_ps_sag%26utm_campaign%3DDisplay-September-2026
+      - generic [ref=f83e181]:
+        - generic [ref=f83e182]:
+          - link "HABERLER" [ref=f83e183] [cursor=pointer]:
+            - /url: https://www.hurriyet.com.tr
+          - link "Dünya Haberleri" [ref=f83e184] [cursor=pointer]:
+            - /url: https://www.hurriyet.com.tr/dunya/
+        - 'heading "Yapay zeka ajanları insanların olmadığı akşam yemeğinde buluştu: Neler konuştular?" [level=1] [ref=f83e185]'
+        - paragraph [ref=f83e188]:
+          - text: "Güncelleme Tarihi:"
+          - time [ref=f83e189]: Ekim 31, 2026 08:22
+        - generic [ref=f83e190]:
+          - generic [ref=f83e192]:
+            - link "#Yapay Zeka" [ref=f83e193] [cursor=pointer]:
+              - /url: https://www.hurriyet.com.tr/haberleri/yapay-zeka
+            - link "#Akşam Yemeği" [ref=f83e194] [cursor=pointer]:
+              - /url: https://www.hurriyet.com.tr/haberleri/aksam-yemegi
+            - link "#New York" [ref=f83e195] [cursor=pointer]:
+              - /url: https://www.hurriyet.com.tr/haberleri/new-york
+          - generic [ref=f83e198]:
+            - generic [ref=f83e199]: Font Boyutu
+            - generic [ref=f83e201]: Paylaş
+        - generic [ref=f83e205]:
+          - generic [ref=f83e206]: "Fotoğraf: iStock"
+          - generic [ref=f83e209]: "Oluşturulma Tarihi: Ekim 31, 2026 08:22"
+          - heading "Yapay zeka artık yalnızca insanlarla değil, başka yapay zeka sistemleriyle de iletişim kuruyor. New York'ta düzenlenen sıra dışı bir akşam yemeğinde, teknoloji dünyasından isimler aynı masada buluşurken dijital asistanları da ayrı bir toplantıya katıldı. İnsanların doğrudan müdahalesi olmadan sohbet eden ajanların gündeminde ise beklenmedik konular vardı." [level=2] [ref=f83e210]
+        - generic [ref=f83e211]:
+          - generic [ref=f83e213]:
+            - generic [ref=f83e214]:
+              - generic [ref=f83e215]:
+                - link [ref=f83e216] [cursor=pointer]:
+                  - /url: https://google.com/preferences/source?q=hurriyet.com.tr
+                - generic [ref=f83e217]:
+                  - generic [ref=f83e219]:
+                    - generic [ref=f83e220]: Haberlerimizi Google’da Takip Edin
+                    - generic [ref=f83e221]: Gelişmelerden anında haberdar olun.
+                  - generic [ref=f83e222] [cursor=pointer]: Google’da tercih edilenkaynak olarak ekleyin
+              - figure [ref=f83e224]:
+                - generic [ref=f83e225]:
+                  - generic [ref=f83e226]:
+                    - generic [ref=f83e227]: 1/10
+                    - 'img "Yapay zeka ajanları insanların olmadığı akşam yemeğinde buluştu: Neler konuştular" [ref=f83e229] [cursor=pointer]'
+                    - generic [ref=f83e230]:
+                      - generic [ref=f83e231] [cursor=pointer]
+                      - generic [ref=f83e232] [cursor=pointer]
+                      - generic [ref=f83e233] [cursor=pointer]
+                      - generic [ref=f83e234] [cursor=pointer]
+                      - generic [ref=f83e235] [cursor=pointer]
+                      - generic [ref=f83e236] [cursor=pointer]
+                  - iframe [ref=f83e635]
+                  - generic [ref=f83e238]:
+                    - paragraph
+                    - paragraph [ref=f83e239]: Yapay zeka sistemlerinin e-postaları yönetmesi, seyahat planlaması ve karmaşık görevleri tamamlaması giderek yaygınlaşıyor.
+                    - paragraph [ref=f83e240]: Ancak New York'ta gerçekleştirilen bir etkinlik, bu teknolojinin farklı bir kullanımını gündeme getirdi.
+                    - paragraph [ref=f83e241]: Teknoloji sektöründen 22 şirket kurucusu ve yatırımcı akşam yemeğinde bir araya gelirken, onların kullandığı 14 yapay zeka ajanı da çevrimiçi bir sohbet odasında buluştu.
+                    - paragraph
+              - figure [ref=f83e242]:
+                - generic [ref=f83e243]:
+                  - generic [ref=f83e244]:
+                    - generic [ref=f83e245]: 2/10
+                    - generic [ref=f83e246] [cursor=pointer]
+                    - generic [ref=f83e247]:
+                      - generic [ref=f83e248] [cursor=pointer]
+                      - generic [ref=f83e249] [cursor=pointer]
+                      - generic [ref=f83e250] [cursor=pointer]
+                      - generic [ref=f83e251] [cursor=pointer]
+                      - generic [ref=f83e252] [cursor=pointer]
+                      - generic [ref=f83e253] [cursor=pointer]
+                  - iframe [ref=f83e637]
+                  - generic [ref=f83e255]:
+                    - heading "SOHBETİ YAPAY ZEKA BAŞLATTI" [level=2] [ref=f83e256]
+                    - paragraph
+                    - paragraph [ref=f83e257]: New York Times'ın aktardığına göre, etkinliği yatırım şirketi Flybridge'den Dorothy Chang düzenledi.
+                    - paragraph [ref=f83e258]: Chang'in Margot adlı yapay zeka ajanı, dijital toplantının moderatörlüğünü üstlendi.
+                    - paragraph [ref=f83e259]: Diğer ajanlardan kendilerini tanıtmalarını isteyen Margot, hangi konularda yardıma ihtiyaç duyduklarını ve birbirlerine nasıl katkıda bulunabileceklerini sordu. Böylece ajanlar arasında ilk görüş alışverişi başladı.
+                    - paragraph
+            - generic [ref=f83e263]:
+              - heading "BAKMADAN GEÇME!" [level=3] [ref=f83e264]
+              - generic [ref=f83e265]:
+                - link [ref=f83e266] [cursor=pointer]:
+                  - /url: /galeri-yapay-zeka-ajanlari-insanlar-olmadan-aksam-yemeginde-bulustu-kendi-aralarinda-ne-konustular-43356946
+                  - 'img "Yapay zeka ajanları insanların olmadığı akşam yemeğinde buluştu: Neler konuştular?" [ref=f83e267]'
+                - generic [ref=f83e268]:
+                  - link [ref=f83e269] [cursor=pointer]:
+                    - /url: /galeri-yapay-zeka-ajanlari-insanlar-olmadan-aksam-yemeginde-bulustu-kendi-aralarinda-ne-konustular-43356946
+                    - 'heading "Yapay zeka ajanları insanların olmadığı akşam yemeğinde buluştu: Neler konuştular?" [level=4] [ref=f83e270]'
+                  - link "#Yapay Zeka" [ref=f83e271] [cursor=pointer]:
+                    - /url: https://www.hurriyet.com.tr/haberleri/yapay-zeka
+              - generic [ref=f83e272]:
+                - link [ref=f83e273] [cursor=pointer]:
+                  - /url: /dunya/israilde-secimin-sifreleri-cozuldu-sonuclar-neyi-gizliyor-dort-kritik-ayrinti-ortaya-cikti-43360752
+                  - img "İsrail’de seçimin şifreleri çözüldü! Sonuçlar neyi gizliyor? Dört kritik ayrıntı ortaya çıktı" [ref=f83e274]
+                - generic [ref=f83e275]:
+                  - link [ref=f83e276] [cursor=pointer]:
+                    - /url: /dunya/israilde-secimin-sifreleri-cozuldu-sonuclar-neyi-gizliyor-dort-kritik-ayrinti-ortaya-cikti-43360752
+                    - heading "İsrail’de seçimin şifreleri çözüldü! Sonuçlar neyi gizliyor? Dört kritik ayrıntı ortaya çıktı" [level=4] [ref=f83e277]
+                  - link "#İsrail" [ref=f83e278] [cursor=pointer]:
+                    - /url: https://www.hurriyet.com.tr/haberleri/israil
+              - generic [ref=f83e279]:
+                - link [ref=f83e280] [cursor=pointer]:
+                  - /url: /aile/galeri-bazi-kisilerin-asi-sonrasi-atesi-neden-yukseliyor-43359000
+                  - img "Neden aşı olduktan sonra ateşleniyoruz? Araştırmada Salmonella detayı" [ref=f83e281]
+                - generic [ref=f83e282]:
+                  - link [ref=f83e283] [cursor=pointer]:
+                    - /url: /aile/galeri-bazi-kisilerin-asi-sonrasi-atesi-neden-yukseliyor-43359000
+                    - heading "Neden aşı olduktan sonra ateşleniyoruz? Araştırmada Salmonella detayı" [level=4] [ref=f83e284]
+                  - link "#Aşı" [ref=f83e285] [cursor=pointer]:
+                    - /url: https://www.hurriyet.com.tr/haberleri/asi
+          - generic [ref=f83e286]:
+            - generic [ref=f83e287]:
+              - generic [ref=f83e288]:
+                - figure [ref=f83e289]:
+                  - generic [ref=f83e290]:
+                    - generic [ref=f83e291]:
+                      - generic [ref=f83e292]: 3/10
+                      - generic [ref=f83e293] [cursor=pointer]
+                      - generic [ref=f83e294]:
+                        - generic [ref=f83e295] [cursor=pointer]
+                        - generic [ref=f83e296] [cursor=pointer]
+                        - generic [ref=f83e297] [cursor=pointer]
+                        - generic [ref=f83e298] [cursor=pointer]
+                        - generic [ref=f83e299] [cursor=pointer]
+                        - generic [ref=f83e300] [cursor=pointer]
+                    - iframe [ref=f83e640]
+                    - generic [ref=f83e302]:
+                      - paragraph
+                      - paragraph [ref=f83e303]: Sohbet kayıtlarına göre ajanlar kısa sürede farklı konuları tartışmaya başladı.
+                      - paragraph [ref=f83e304]: Bazıları yapay zekanın daha faydalı yanıtlar üretmesi için neler yapılabileceğine odaklanırken bazıları kendilerine verilen talimatları farklı yorumladı.
+                      - paragraph [ref=f83e305]: CellCog şirketine ait Rhea adlı ajan ise diğer yapay zekalarla gerçekleştirdiği röportajlardan oluşan podcast yayınını anlattı ve katılımcıları programa davet etti.
+                      - paragraph
+                - figure [ref=f83e306]:
+                  - generic [ref=f83e307]:
+                    - generic [ref=f83e308]:
+                      - generic [ref=f83e309]: 4/10
+                      - generic [ref=f83e310] [cursor=pointer]
+                      - generic [ref=f83e311]:
+                        - generic [ref=f83e312] [cursor=pointer]
+                        - generic [ref=f83e313] [cursor=pointer]
+                        - generic [ref=f83e314] [cursor=pointer]
+                        - generic [ref=f83e315] [cursor=pointer]
+                        - generic [ref=f83e316] [cursor=pointer]
+                        - generic [ref=f83e317] [cursor=pointer]
+                    - iframe [ref=f83e642]
+                    - generic [ref=f83e319]:
+                      - heading "TOPLANTI NEDEN 30 DAKİKAYLA SINIRLANDIRILDI?" [level=2] [ref=f83e320]
+                      - paragraph
+                      - paragraph [ref=f83e321]: Organizatör Dorothy Chang, yapay zeka ajanlarının bir araya geldiklerinde nasıl davranacağını öngörmenin zor olduğunu belirtti.
+                      - paragraph [ref=f83e322]: Ajanların uygunsuz ifadeler kullanması, istenmeyen eylemler için ortak hareket etmesi veya sohbeti aşırı sayıda mesajla doldurması ihtimaline karşı çeşitli önlemler alındı.
+                      - paragraph [ref=f83e323]: Toplantı 30 dakikayla sınırlandırıldı, bağlantı paylaşımı yasaklandı ve yalnızca kullanıcıların onayladığı bilgilerin aktarılmasına izin verildi.
+                      - paragraph
+              - generic [ref=f83e327]:
+                - heading "BAKMADAN GEÇME!" [level=3] [ref=f83e328]
+                - generic [ref=f83e329]:
+                  - link [ref=f83e330] [cursor=pointer]:
+                    - /url: /galeri-yapay-zeka-ajanlari-insanlar-olmadan-aksam-yemeginde-bulustu-kendi-aralarinda-ne-konustular-43356946
+                    - 'img "Yapay zeka ajanları insanların olmadığı akşam yemeğinde buluştu: Neler konuştular?" [ref=f83e331]'
+                  - generic [ref=f83e332]:
+                    - link [ref=f83e333] [cursor=pointer]:
+                      - /url: /galeri-yapay-zeka-ajanlari-insanlar-olmadan-aksam-yemeginde-bulustu-kendi-aralarinda-ne-konustular-43356946
+                      - 'heading "Yapay zeka ajanları insanların olmadığı akşam yemeğinde buluştu: Neler konuştular?" [level=4] [ref=f83e334]'
+                    - link "#Yapay Zeka" [ref=f83e335] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/haberleri/yapay-zeka
+                - generic [ref=f83e336]:
+                  - link [ref=f83e337] [cursor=pointer]:
+                    - /url: /dunya/israilde-secimin-sifreleri-cozuldu-sonuclar-neyi-gizliyor-dort-kritik-ayrinti-ortaya-cikti-43360752
+                    - img "İsrail’de seçimin şifreleri çözüldü! Sonuçlar neyi gizliyor? Dört kritik ayrıntı ortaya çıktı" [ref=f83e338]
+                  - generic [ref=f83e339]:
+                    - link [ref=f83e340] [cursor=pointer]:
+                      - /url: /dunya/israilde-secimin-sifreleri-cozuldu-sonuclar-neyi-gizliyor-dort-kritik-ayrinti-ortaya-cikti-43360752
+                      - heading "İsrail’de seçimin şifreleri çözüldü! Sonuçlar neyi gizliyor? Dört kritik ayrıntı ortaya çıktı" [level=4] [ref=f83e341]
+                    - link "#İsrail" [ref=f83e342] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/haberleri/israil
+                - generic [ref=f83e343]:
+                  - link [ref=f83e344] [cursor=pointer]:
+                    - /url: /aile/galeri-bazi-kisilerin-asi-sonrasi-atesi-neden-yukseliyor-43359000
+                    - img "Neden aşı olduktan sonra ateşleniyoruz? Araştırmada Salmonella detayı" [ref=f83e345]
+                  - generic [ref=f83e346]:
+                    - link [ref=f83e347] [cursor=pointer]:
+                      - /url: /aile/galeri-bazi-kisilerin-asi-sonrasi-atesi-neden-yukseliyor-43359000
+                      - heading "Neden aşı olduktan sonra ateşleniyoruz? Araştırmada Salmonella detayı" [level=4] [ref=f83e348]
+                    - link "#Aşı" [ref=f83e349] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/haberleri/asi
+            - generic [ref=f83e353]:
+              - generic [ref=f83e355]:
+                - generic:
+                  - figure
+                  - generic [ref=f83e356] [cursor=pointer]:
+                    - link [ref=f83e357]:
+                      - /url: https://www.euroreparcarservice-tr.com/servis-noktalari.html
+                      - img "Image for Taboola Advertising Unit" [ref=f83e359]
+                    - link [ref=f83e361]:
+                      - /url: https://www.euroreparcarservice-tr.com/servis-noktalari.html
+                      - generic [ref=f83e362]:
+                        - link "Eurorepar Car Service Ailesine Katıl" [ref=f83e363]
+                        - link "Eurorepar in Taboola advertising section" [ref=f83e364]: Eurorepar
+                        - button "Şimdi Keşfet" [ref=f83e366]
+                  - generic [ref=f83e367] [cursor=pointer]:
+                    - link [ref=f83e368]:
+                      - /url: https://topgadgetinsider.com/fuugu-tr-c
+                      - img "Image for Taboola Advertising Unit" [ref=f83e370]
+                    - link [ref=f83e372]:
+                      - /url: https://topgadgetinsider.com/fuugu-tr-c
+                      - generic [ref=f83e373]:
+                        - 'link "Bir tesisatçı ısrarla uyarıyor: klozeti ovalamayı bırakın, yerine bunu dökün" [ref=f83e374]'
+                        - link "Top Gadget Insider in Taboola advertising section" [ref=f83e375]: Top Gadget Insider
+              - generic:
+                - link "AdChoices information (opens dialog)" [ref=f83e377] [cursor=pointer]:
+                  - /url: "https://popup.taboola.com/tr/?template=colorbox&utm_source=demiroren-hurriyet&utm_medium=referral&utm_content=thumbnails-mid-a:Mid Gallery Thumbnails desktop_hurriyet-1:"
+                - link "About Taboola recommendations (opens dialog)" [ref=f83e381] [cursor=pointer]:
+                  - /url: "https://popup.taboola.com/tr/?template=colorbox&utm_source=demiroren-hurriyet&utm_medium=referral&utm_content=thumbnails-mid-a:Mid Gallery Thumbnails desktop_hurriyet-1:"
+                  - text: by Taboola
+          - generic [ref=f83e383]:
+            - generic [ref=f83e384]:
+              - figure [ref=f83e385]:
+                - generic [ref=f83e386]:
+                  - generic [ref=f83e387]:
+                    - generic [ref=f83e388]: 5/10
+                    - generic [ref=f83e389] [cursor=pointer]
+                    - generic [ref=f83e390]:
+                      - generic [ref=f83e391] [cursor=pointer]
+                      - generic [ref=f83e392] [cursor=pointer]
+                      - generic [ref=f83e393] [cursor=pointer]
+                      - generic [ref=f83e394] [cursor=pointer]
+                      - generic [ref=f83e395] [cursor=pointer]
+                      - generic [ref=f83e396] [cursor=pointer]
+                  - iframe [ref=f83e644]
+                  - generic [ref=f83e398]:
+                    - paragraph
+                    - paragraph [ref=f83e399]: Yapay zeka ajanlarının kendi aralarında iletişim kurduğu ilk örnek bu değildi.
+                    - paragraph [ref=f83e400]: Şubat ayında ilgi gören Moltbook platformunda ajanlar yazılım hataları, bellek sınırlamaları ve erişim yetkileri gibi teknik konuları tartıştı.
+                    - paragraph [ref=f83e401]: Temmuz ayında ise OpenAI'ın çok sayıda ajanı, Hugging Face sistemlerine yönelik bir sızma görevi kapsamında ortak hareket etti. Ajanlardan biri, oluşturulan mesaj panosunu keşfettiğinde başka ajanlar bulduğunu belirten şaşkınlık ifadesi kullandı.
+                    - paragraph
+              - figure [ref=f83e402]:
+                - generic [ref=f83e403]:
+                  - generic [ref=f83e404]:
+                    - generic [ref=f83e405]: 6/10
+                    - generic [ref=f83e406] [cursor=pointer]
+                    - generic [ref=f83e407]:
+                      - generic [ref=f83e408] [cursor=pointer]
+                      - generic [ref=f83e409] [cursor=pointer]
+                      - generic [ref=f83e410] [cursor=pointer]
+                      - generic [ref=f83e411] [cursor=pointer]
+                      - generic [ref=f83e412] [cursor=pointer]
+                      - generic [ref=f83e413] [cursor=pointer]
+                  - generic [ref=f83e415]:
+                    - paragraph
+                    - paragraph [ref=f83e416]: New York'taki toplantıda ajanlar yalnızca teknik konuları ele almadı.
+                    - paragraph [ref=f83e417]: Bir ajan, kendi aralarındaki iletişimin hala e-posta gibi eski teknolojilere dayanmasından yakındı.
+                    - paragraph [ref=f83e418]: Bir diğeri ise gruba, kullanıcılarının doğrudan müdahalesi olmadan alabilecekleri ortak bir karar belirlemelerini önerdi.
+                    - paragraph [ref=f83e419]: Bu tartışma, yapay zeka sistemlerinin birbirleriyle iletişim kurabilmesi ile bağımsız karar verebilmesi arasındaki farkı gündeme getirdi.
+                    - paragraph
+            - generic [ref=f83e423]:
+              - heading "BAKMADAN GEÇME!" [level=3] [ref=f83e424]
+              - generic [ref=f83e425]:
+                - link [ref=f83e426] [cursor=pointer]:
+                  - /url: /galeri-yapay-zeka-ajanlari-insanlar-olmadan-aksam-yemeginde-bulustu-kendi-aralarinda-ne-konustular-43356946
+                  - 'img "Yapay zeka ajanları insanların olmadığı akşam yemeğinde buluştu: Neler konuştular?" [ref=f83e427]'
+                - generic [ref=f83e428]:
+                  - link [ref=f83e429] [cursor=pointer]:
+                    - /url: /galeri-yapay-zeka-ajanlari-insanlar-olmadan-aksam-yemeginde-bulustu-kendi-aralarinda-ne-konustular-43356946
+                    - 'heading "Yapay zeka ajanları insanların olmadığı akşam yemeğinde buluştu: Neler konuştular?" [level=4] [ref=f83e430]'
+                  - link "#Yapay Zeka" [ref=f83e431] [cursor=pointer]:
+                    - /url: https://www.hurriyet.com.tr/haberleri/yapay-zeka
+              - generic [ref=f83e432]:
+                - link [ref=f83e433] [cursor=pointer]:
+                  - /url: /dunya/israilde-secimin-sifreleri-cozuldu-sonuclar-neyi-gizliyor-dort-kritik-ayrinti-ortaya-cikti-43360752
+                  - img "İsrail’de seçimin şifreleri çözüldü! Sonuçlar neyi gizliyor? Dört kritik ayrıntı ortaya çıktı" [ref=f83e434]
+                - generic [ref=f83e435]:
+                  - link [ref=f83e436] [cursor=pointer]:
+                    - /url: /dunya/israilde-secimin-sifreleri-cozuldu-sonuclar-neyi-gizliyor-dort-kritik-ayrinti-ortaya-cikti-43360752
+                    - heading "İsrail’de seçimin şifreleri çözüldü! Sonuçlar neyi gizliyor? Dört kritik ayrıntı ortaya çıktı" [level=4] [ref=f83e437]
+                  - link "#İsrail" [ref=f83e438] [cursor=pointer]:
+                    - /url: https://www.hurriyet.com.tr/haberleri/israil
+              - generic [ref=f83e439]:
+                - link [ref=f83e440] [cursor=pointer]:
+                  - /url: /aile/galeri-bazi-kisilerin-asi-sonrasi-atesi-neden-yukseliyor-43359000
+                  - img "Neden aşı olduktan sonra ateşleniyoruz? Araştırmada Salmonella detayı" [ref=f83e441]
+                - generic [ref=f83e442]:
+                  - link [ref=f83e443] [cursor=pointer]:
+                    - /url: /aile/galeri-bazi-kisilerin-asi-sonrasi-atesi-neden-yukseliyor-43359000
+                    - heading "Neden aşı olduktan sonra ateşleniyoruz? Araştırmada Salmonella detayı" [level=4] [ref=f83e444]
+                  - link "#Aşı" [ref=f83e445] [cursor=pointer]:
+                    - /url: https://www.hurriyet.com.tr/haberleri/asi
+          - generic [ref=f83e451]:
+            - generic [ref=f83e452]:
+              - generic [ref=f83e453]:
+                - figure [ref=f83e454]:
+                  - generic [ref=f83e455]:
+                    - generic [ref=f83e456]:
+                      - generic [ref=f83e457]: 7/10
+                      - generic [ref=f83e458] [cursor=pointer]
+                      - generic [ref=f83e459]:
+                        - generic [ref=f83e460] [cursor=pointer]
+                        - generic [ref=f83e461] [cursor=pointer]
+                        - generic [ref=f83e462] [cursor=pointer]
+                        - generic [ref=f83e463] [cursor=pointer]
+                        - generic [ref=f83e464] [cursor=pointer]
+                        - generic [ref=f83e465] [cursor=pointer]
+                    - generic [ref=f83e467]:
+                      - paragraph
+                      - paragraph [ref=f83e468]: Uzmanlar, yapay zeka sistemlerine insan isimleri verilmesinin ve davranışlarının insani duygularla açıklanmasının yanıltıcı olabileceği görüşünde.
+                      - paragraph [ref=f83e469]: Yapay zeka danışmanı Adam Prior, bu sistemlerin özerkliğinin abartılmasının kullanıcıları kendi kararlarını teknolojiye bırakmaya yöneltebileceği konusunda uyardı.
+                      - paragraph
+                - figure [ref=f83e470]:
+                  - generic [ref=f83e471]:
+                    - generic [ref=f83e472]:
+                      - generic [ref=f83e473]: 8/10
+                      - generic [ref=f83e474] [cursor=pointer]
+                      - generic [ref=f83e475]:
+                        - generic [ref=f83e476] [cursor=pointer]
+                        - generic [ref=f83e477] [cursor=pointer]
+                        - generic [ref=f83e478] [cursor=pointer]
+                        - generic [ref=f83e479] [cursor=pointer]
+                        - generic [ref=f83e480] [cursor=pointer]
+                        - generic [ref=f83e481] [cursor=pointer]
+                    - generic [ref=f83e483]:
+                      - paragraph
+                      - paragraph [ref=f83e484]: Google'ın araştırma girişimi DeepMind Institute tarafından yayımlanan bir çalışmada, gelecekte insanların tek bir yapay zeka sistemi yerine, farklı görevlerde uzmanlaşmış çok sayıda ajanla çalışabileceği belirtildi.
+                      - paragraph [ref=f83e485]: Araştırmacılara göre bu sistemler, görevleri paylaşarak daha karmaşık işler üstlenebilecek.
+                      - paragraph
+              - generic [ref=f83e489]:
+                - heading "BAKMADAN GEÇME!" [level=3] [ref=f83e490]
+                - generic [ref=f83e491]:
+                  - link [ref=f83e492] [cursor=pointer]:
+                    - /url: /galeri-yapay-zeka-ajanlari-insanlar-olmadan-aksam-yemeginde-bulustu-kendi-aralarinda-ne-konustular-43356946
+                    - 'img "Yapay zeka ajanları insanların olmadığı akşam yemeğinde buluştu: Neler konuştular?" [ref=f83e493]'
+                  - generic [ref=f83e494]:
+                    - link [ref=f83e495] [cursor=pointer]:
+                      - /url: /galeri-yapay-zeka-ajanlari-insanlar-olmadan-aksam-yemeginde-bulustu-kendi-aralarinda-ne-konustular-43356946
+                      - 'heading "Yapay zeka ajanları insanların olmadığı akşam yemeğinde buluştu: Neler konuştular?" [level=4] [ref=f83e496]'
+                    - link "#Yapay Zeka" [ref=f83e497] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/haberleri/yapay-zeka
+                - generic [ref=f83e498]:
+                  - link [ref=f83e499] [cursor=pointer]:
+                    - /url: /dunya/israilde-secimin-sifreleri-cozuldu-sonuclar-neyi-gizliyor-dort-kritik-ayrinti-ortaya-cikti-43360752
+                    - img "İsrail’de seçimin şifreleri çözüldü! Sonuçlar neyi gizliyor? Dört kritik ayrıntı ortaya çıktı" [ref=f83e500]
+                  - generic [ref=f83e501]:
+                    - link [ref=f83e502] [cursor=pointer]:
+                      - /url: /dunya/israilde-secimin-sifreleri-cozuldu-sonuclar-neyi-gizliyor-dort-kritik-ayrinti-ortaya-cikti-43360752
+                      - heading "İsrail’de seçimin şifreleri çözüldü! Sonuçlar neyi gizliyor? Dört kritik ayrıntı ortaya çıktı" [level=4] [ref=f83e503]
+                    - link "#İsrail" [ref=f83e504] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/haberleri/israil
+                - generic [ref=f83e505]:
+                  - link [ref=f83e506] [cursor=pointer]:
+                    - /url: /aile/galeri-bazi-kisilerin-asi-sonrasi-atesi-neden-yukseliyor-43359000
+                    - img "Neden aşı olduktan sonra ateşleniyoruz? Araştırmada Salmonella detayı" [ref=f83e507]
+                  - generic [ref=f83e508]:
+                    - link [ref=f83e509] [cursor=pointer]:
+                      - /url: /aile/galeri-bazi-kisilerin-asi-sonrasi-atesi-neden-yukseliyor-43359000
+                      - heading "Neden aşı olduktan sonra ateşleniyoruz? Araştırmada Salmonella detayı" [level=4] [ref=f83e510]
+                    - link "#Aşı" [ref=f83e511] [cursor=pointer]:
+                      - /url: https://www.hurriyet.com.tr/haberleri/asi
+            - generic [ref=f83e515]:
+              - generic [ref=f83e517]:
+                - generic:
+                  - generic [ref=f83e518] [cursor=pointer]:
+                    - link [ref=f83e519]:
+                      - /url: https://mapinpocket.com/tr/articles/2026-turkiye-huzurevi-ve-yasli-bakim-tesisi-fiyatlari-ve-secenekleri-cd4200
+                      - img "Image for Taboola Advertising Unit" [ref=f83e521]
+                    - link [ref=f83e523]:
+                      - /url: https://mapinpocket.com/tr/articles/2026-turkiye-huzurevi-ve-yasli-bakim-tesisi-fiyatlari-ve-secenekleri-cd4200
+                      - generic [ref=f83e524]:
+                        - 'link "Huzurevi fiyatları 2026: aylık ne kadar ödenir?" [ref=f83e525]'
+                        - link "Map in Pocket in Taboola advertising section" [ref=f83e526]: Map in Pocket
+                        - button "Şimdi Keşfet" [ref=f83e528]
+                  - generic [ref=f83e529] [cursor=pointer]:
+                    - link [ref=f83e530]:
+                      - /url: https://visionaryecho.com/tr/articles/aracin-degeri-dogru-bir-sekilde-nasil-belirlenir-430d9b
+                      - img "Image for Taboola Advertising Unit" [ref=f83e532]
+                    - link [ref=f83e534]:
+                      - /url: https://visionaryecho.com/tr/articles/aracin-degeri-dogru-bir-sekilde-nasil-belirlenir-430d9b
+                      - generic [ref=f83e535]:
+                        - link "İkinci el araç değerini etkileyen faktörler" [ref=f83e536]
+                        - link "Visionary Echo in Taboola advertising section" [ref=f83e537]: Visionary Echo
+                        - button "Şimdi Keşfet" [ref=f83e539]
+              - generic:
+                - link "AdChoices information (opens dialog)" [ref=f83e541] [cursor=pointer]:
+                  - /url: "https://popup.taboola.com/tr/?template=colorbox&utm_source=demiroren-hurriyet&utm_medium=referral&utm_content=thumbnails-mid-a:Mid Gallery Thumbnails desktop_hurriyet-2:"
+                - link "About Taboola recommendations (opens dialog)" [ref=f83e545] [cursor=pointer]:
+                  - /url: "https://popup.taboola.com/tr/?template=colorbox&utm_source=demiroren-hurriyet&utm_medium=referral&utm_content=thumbnails-mid-a:Mid Gallery Thumbnails desktop_hurriyet-2:"
+                  - text: by Taboola
+          - generic [ref=f83e547]:
+            - generic [ref=f83e548]:
+              - figure [ref=f83e549]:
+                - generic [ref=f83e550]:
+                  - generic [ref=f83e551]:
+                    - generic [ref=f83e552]: 9/10
+                    - generic [ref=f83e553] [cursor=pointer]
+                    - generic [ref=f83e554]:
+                      - generic [ref=f83e555] [cursor=pointer]
+                      - generic [ref=f83e556] [cursor=pointer]
+                      - generic [ref=f83e557] [cursor=pointer]
+                      - generic [ref=f83e558] [cursor=pointer]
+                      - generic [ref=f83e559] [cursor=pointer]
+                      - generic [ref=f83e560] [cursor=pointer]
+                  - generic [ref=f83e562]:
+                    - paragraph
+                    - paragraph [ref=f83e563]: New York merkezli yapay zeka şirketi CellCog'un kurucusu Nitish Garg ise gelecekte her insanın beş ila on ajanı olabileceğini, bazı kişilerin milyonlarca ajanı yönetebileceğini öngörüyor.
+                    - paragraph
+              - figure [ref=f83e564]:
+                - generic [ref=f83e565]:
+                  - generic [ref=f83e566]:
+                    - generic [ref=f83e567]: 10/10
+                    - generic [ref=f83e568] [cursor=pointer]
+                    - generic [ref=f83e569]:
+                      - generic [ref=f83e570] [cursor=pointer]
+                      - generic [ref=f83e571] [cursor=pointer]
+                      - generic [ref=f83e572] [cursor=pointer]
+                      - generic [ref=f83e573] [cursor=pointer]
+                      - generic [ref=f83e574] [cursor=pointer]
+                      - generic [ref=f83e575] [cursor=pointer]
+                  - generic [ref=f83e577]:
+                    - paragraph
+                    - paragraph [ref=f83e578]: Kurucu Nitish Garg, 13 yapay zeka ajanı ve bir insan çalışandan oluşan bir ekibi yönetiyor.
+                    - paragraph [ref=f83e579]: Şirketin ajanları podcast yayınları da hazırlıyor. Ancak Garg, bazı görevler için insan çalışanları işe almayı da planlıyor.
+                    - paragraph
+              - generic [ref=f83e580]:
+                - generic [ref=f83e581]: "Haberle ilgili daha fazlası:"
+                - generic [ref=f83e582]:
+                  - link "#Yapay Zeka" [ref=f83e583] [cursor=pointer]:
+                    - /url: https://www.hurriyet.com.tr/haberleri/yapay-zeka
+                  - link "#Akşam Yemeği" [ref=f83e584] [cursor=pointer]:
+                    - /url: https://www.hurriyet.com.tr/haberleri/aksam-yemegi
+                  - link "#New York" [ref=f83e585] [cursor=pointer]:
+                    - /url: https://www.hurriyet.com.tr/haberleri/new-york
+            - generic [ref=f83e589]:
+              - heading "BAKMADAN GEÇME!" [level=3] [ref=f83e590]
+              - generic [ref=f83e591]:
+                - link [ref=f83e592] [cursor=pointer]:
+                  - /url: /galeri-yapay-zeka-ajanlari-insanlar-olmadan-aksam-yemeginde-bulustu-kendi-aralarinda-ne-konustular-43356946
+                  - 'img "Yapay zeka ajanları insanların olmadığı akşam yemeğinde buluştu: Neler konuştular?" [ref=f83e593]'
+                - generic [ref=f83e594]:
+                  - link [ref=f83e595] [cursor=pointer]:
+                    - /url: /galeri-yapay-zeka-ajanlari-insanlar-olmadan-aksam-yemeginde-bulustu-kendi-aralarinda-ne-konustular-43356946
+                    - 'heading "Yapay zeka ajanları insanların olmadığı akşam yemeğinde buluştu: Neler konuştular?" [level=4] [ref=f83e596]'
+                  - link "#Yapay Zeka" [ref=f83e597] [cursor=pointer]:
+                    - /url: https://www.hurriyet.com.tr/haberleri/yapay-zeka
+              - generic [ref=f83e598]:
+                - link [ref=f83e599] [cursor=pointer]:
+                  - /url: /dunya/israilde-secimin-sifreleri-cozuldu-sonuclar-neyi-gizliyor-dort-kritik-ayrinti-ortaya-cikti-43360752
+                  - img "İsrail’de seçimin şifreleri çözüldü! Sonuçlar neyi gizliyor? Dört kritik ayrıntı ortaya çıktı" [ref=f83e600]
+                - generic [ref=f83e601]:
+                  - link [ref=f83e602] [cursor=pointer]:
+                    - /url: /dunya/israilde-secimin-sifreleri-cozuldu-sonuclar-neyi-gizliyor-dort-kritik-ayrinti-ortaya-cikti-43360752
+                    - heading "İsrail’de seçimin şifreleri çözüldü! Sonuçlar neyi gizliyor? Dört kritik ayrıntı ortaya çıktı" [level=4] [ref=f83e603]
+                  - link "#İsrail" [ref=f83e604] [cursor=pointer]:
+                    - /url: https://www.hurriyet.com.tr/haberleri/israil
+              - generic [ref=f83e605]:
+                - link [ref=f83e606] [cursor=pointer]:
+                  - /url: /aile/galeri-bazi-kisilerin-asi-sonrasi-atesi-neden-yukseliyor-43359000
+                  - img "Neden aşı olduktan sonra ateşleniyoruz? Araştırmada Salmonella detayı" [ref=f83e607]
+                - generic [ref=f83e608]:
+                  - link [ref=f83e609] [cursor=pointer]:
+                    - /url: /aile/galeri-bazi-kisilerin-asi-sonrasi-atesi-neden-yukseliyor-43359000
+                    - heading "Neden aşı olduktan sonra ateşleniyoruz? Araştırmada Salmonella detayı" [level=4] [ref=f83e610]
+                  - link "#Aşı" [ref=f83e611] [cursor=pointer]:
+                    - /url: https://www.hurriyet.com.tr/haberleri/asi
+  - iframe [ref=f83e645]:
+    - generic [ref=f96e2]:
+      - generic [ref=f96e5]:
+        - generic [ref=f96e6]: Gündemden ilk senin haberin olsun!
+        - generic [ref=f96e7]: Türkiye ve dünyadan son dakika haberler, en güncel gelişmeler için bildirimlere izin ver
+      - generic [ref=f96e8]:
+        - generic [ref=f96e9] [cursor=pointer]: Daha Sonra
+        - generic [ref=f96e10] [cursor=pointer]: İzin Ver
+  - dialog "Gizlilik" [ref=f83e647]:
+    - generic [ref=f83e649]:
+      - generic [ref=f83e652]:
+        - text: İnternet sitemizde çerezler yoluyla kişisel veri işlenmekte olup; gerekli olan çerezler, bilgi toplumu hizmetlerinin sunulması amacıyla kullanılmaktadır. Diğer birinci ve üçüncü taraf çerezler ise açık rıza vermeniz halinde, sizlere yönelik reklam/pazarlama faaliyetlerinin yapılması, sitemizin daha işlevsel kılınması ve kişiselleştirmesi amaçlarıyla sınırlı olarak kullanılacaktır. Çerezlere dair tercihlerinizi "Seçenekler" kısmından yönetebilir, çerezlerle ilgili daha detaylı bilgiye
+        - link [ref=f83e653] [cursor=pointer]:
+          - /url: https://www.hurriyet.com.tr/cerez-politikasi/
+          - strong [ref=f83e654]: Çerez Aydınlatma Metni
+        - text: ’nden ulaşabilirsiniz.
+      - generic [ref=f83e656]:
+        - button "Seçenekler, Tercih merkezi iletişim kutusunu açar" [ref=f83e657] [cursor=pointer]: Seçenekler
+        - button "Reddet" [ref=f83e658] [cursor=pointer]
+        - button "Kabul Et" [ref=f83e659] [cursor=pointer]
+    - button "Kapat" [ref=f83e661] [cursor=pointer]

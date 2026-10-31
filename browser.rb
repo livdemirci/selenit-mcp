@@ -733,7 +733,11 @@ class SelenitBrowser
         if (p > enPuan) { enPuan = p; en = hepsi[k]; }
       }
       // Sıralama puanlaması her zaman bir aday verir; en kötü durumda ilk alan.
-      return hepsi.indexOf(en);
+      // DİKKAT: indexOf(en) yerine indexOf ile bulunan SAYI döndürülürdü, ama
+      // `en` bir nesne — indexOf nesne kimliğiyle çalışır ve -1 dönebilir
+      // (ölçüldü: github'da index -1/0 karışıyor, Ruby tarafı nil alıyordu).
+      // Elementi doğrudan döndür: Selenium JS nesnesini WebElement'e çevirir.
+      return en || hepsi[0];
     })();
   JS
 
@@ -879,18 +883,84 @@ class SelenitBrowser
   end
 
   def varsayilan_giris_alani
-    index = driver.execute_script(GIRIS_ALANI_JS)
-    return nil if index.nil?
-    alanlar = driver.find_elements(css: "input,textarea").select do |e|
-      begin
-        e.displayed? && !e.enabled?.nil?
-      rescue StandardError
-        false
-      end
-    end
-    alanlar[index.to_i]
+    # GIRIS_ALANI_JS doğrudan ELEMENT döndürüyor (index değil) — Selenium
+    # JS nesnesini WebElement'e çevirir.
+    #
+    # ÖNEMLİ: JS bir IIFE ("(function(){...})();"). execute_script'e çıplak
+    # verildiğinde Selenium onu bir İFADE olarak çalıştırır ve IIFE'nin iç
+    # return'ü DIŞARI ÇIKMAZ — sonuç nil olur (ölçüldü: github'da element
+    # sayfada varken nil alınıyordu). Bu yüzden açık `return` ile sarmalanır.
+    driver.execute_script("return #{GIRIS_ALANI_JS}")
   rescue StandardError
     nil
+  end
+
+  # KAPALI ARAMA KUTUSUNU AÇ — genel desen, siteye özgü değil.
+  #
+  # ÖLÇÜLDÜ (github, gemma-4-e4b): arama kutusu DOM'da görünür bir <input>
+  # olarak YOK; yalnızca aria-label'ında "search"/"ara" geçen bir <button>
+  # var ("Search or jump to, type / to search"). Tıklanınca input açılıyor.
+  # Model bunu bilmediği için browser_find(role: 'textbox') boş dönüyor ve
+  # görev bitiyordu.
+  #
+  # Kural tamamen genel: erişilebilirlik adı arama sinyali taşıyan, GÖRÜNÜR
+  # ve yazı alanı OLMAYAN bir düğme varsa tıkla; sonra input'un açılmasını bekle.
+  # Aynı desen (kapalı arama paneli) e-ticaret, wiki, dokümantasyon sitelerinde
+  # yaygın; hiçbir site adı kodda geçmez.
+  ARAMA_ACICI_JS = <<~JS
+    var AD = /(search|ara|arama|sorgu|query|kelime|bul)/i;
+    var adaylar = document.querySelectorAll('button,[role=button],a[href="#"],summary,label');
+    for (var i = 0; i < adaylar.length; i++) {
+      var e = adaylar[i];
+      var r = e.getBoundingClientRect();
+      if (r.width <= 0 || r.height <= 0) continue;
+      var st = window.getComputedStyle(e);
+      if (st.visibility === 'hidden' || st.display === 'none' || parseFloat(st.opacity) === 0) continue;
+      var ad = (e.getAttribute('aria-label') || e.innerText || e.textContent || '').replace(/\\s+/g, ' ').trim();
+      if (!ad || ad.length > 90) continue;
+      if (!AD.test(ad)) continue;
+      // Kendisi yazı alanı olmasın; hedefi bir input açsın
+      var tag = e.tagName.toLowerCase();
+      if (tag === 'input' || tag === 'textarea') continue;
+      var r2 = e.getBoundingClientRect();
+      return { x: Math.round(r2.left + r2.width / 2), y: Math.round(r2.top + r2.height / 2), ad: ad.slice(0, 60) };
+    }
+    return null;
+  JS
+
+  # Arama kutusu görünmüyorsa açmayı dener. Açıldıysa true döner.
+  def arama_kutusunu_ac(timeout: 2.0)
+    aday = driver.execute_script(ARAMA_ACICI_JS)
+    return false if aday.nil?
+
+    begin
+      driver.action.move_to_location(aday["x"].to_i, aday["y"].to_i).click.perform
+    rescue StandardError
+      # Kısıtlı ortam: JS tıklaması da kabul
+      driver.execute_script(
+        "var el=document.elementFromPoint(arguments[0],arguments[1]); if(el) el.click();",
+        aday["x"].to_i, aday["y"].to_i
+      )
+    end
+
+    # Input açıldı mı? Görünür bir yazı alanı belirdiyse başarılı.
+    wait_until(timeout: timeout) do
+      driver.execute_script(<<~JS).to_i.positive?
+        var alanlar = document.querySelectorAll('input:not([type=hidden]),textarea');
+        var n = 0;
+        for (var i = 0; i < alanlar.length; i++) {
+          var r = alanlar[i].getBoundingClientRect();
+          var s = window.getComputedStyle(alanlar[i]);
+          if (r.width > 10 && r.height > 5 && s.visibility !== 'hidden' && s.display !== 'none') n++;
+        }
+        return n;
+      JS
+    end
+    true
+  rescue Selenium::WebDriver::Error::TimeoutError
+    false
+  rescue StandardError
+    false
   end
 
   def type(ref: nil, selector: nil, text: "", submit: false, confirm: false)
@@ -910,9 +980,15 @@ class SelenitBrowser
     # Hiçbiri yoksa anlamlı hata döndür (sessiz başarısızlık yok).
     if ref.to_s.empty? && selector.to_s.empty?
       aday = varsayilan_giris_alani
+      # KAPALI ARAMA KUTUSU: alan görünmüyorsa açmayı dene (genel desen —
+      # erişilebilirlik adında arama sinyali taşıyan bir düğme varsa tıkla).
+      if aday.nil? && arama_kutusunu_ac
+        aday = varsayilan_giris_alani
+      end
       return "HATA (type): yazılacak alan bulunamadı. İpucu: browser_snapshot çağır ve çıkan ref'i ver " \
              "(ör. browser_type(ref: 'e4', text: '...')), ya da ARIA ile hedefle: " \
-             "browser_find(role: 'searchbox') ile ref al." unless aday
+             "browser_find(role: 'searchbox') ile ref al. Arama kutusu bir düğmenin " \
+             "arkasında gizliyse önce o düğmeye browser_click ile tıkla." unless aday
       element = aday
     else
       # Gizli ama MEVCUT alan: bazı siteler arama panelini visibility:hidden

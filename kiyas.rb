@@ -156,7 +156,7 @@ FAIL_RE = /could not|couldn't|unable|failed|not found|i can't|cannot|tamamlayama
 
 def words(a) = norm(a).split.select { |k| k.length >= 3 }
 
-def score(answer, page, thinking_leak: false)
+def score(answer, page, thinking_leak: false, son_url: nil)
   c = answer.to_s.strip
   if c.empty?
     # Thinking sızması ayrı sınıf: araç hatası DEĞİL, model yapılandırma sorunu.
@@ -179,7 +179,17 @@ def score(answer, page, thinking_leak: false)
   cevap_url = c[%r{https?://[^\s\)\]\}"']+}]
   if cevap_url && !cevap_url.empty?
     temiz_url = cevap_url.sub(%r{/+$}, "")
-    if pn.include?(norm(temiz_url)) || norm(page).include?(norm(temiz_url.split("/").last.to_s))
+    # EŞLEŞTİRME: sayfa metni URL içermez (innerText adres çubuğunu kapsamaz).
+    # Bu yüzden hem sayfa metnine hem de GERÇEK son URL'ye bak.
+    # ÖLÇÜLDÜ (npm): cevap 'selenium | https://www.npmjs.com/search?q=selenium'
+    # idi, gerçek URL de aynıydı — ama yalnızca innerText'e bakıldığı için
+    # eşleşme bulunamadı ve doğru cevap 'hallucinated' sayıldı.
+    url_eslesti =
+      (son_url && !son_url.to_s.empty? && norm(son_url.to_s).include?(norm(temiz_url)) ||
+       norm(temiz_url).include?(norm(son_url.to_s))) ||
+      pn.include?(norm(temiz_url)) ||
+      norm(page).include?(norm(temiz_url.split("/").last.to_s))
+    if url_eslesti
       return { "ok" => true, "class" => "verified_url", "title" => temiz_url[0, 90] }
     end
   end
@@ -286,7 +296,7 @@ def selenit_run(site, llm, run_no)
   rescue StandardError
     ""
   end
-  s = score(r[:answer], page, thinking_leak: r[:thinking_leak])
+  s = score(r[:answer], page, thinking_leak: r[:thinking_leak], son_url: final_url)
   mcp.stop
   { "site" => site[:name], "tool" => "selenit", "run" => run_no, "pass" => s["ok"],
     "reason" => s["class"], "title" => s["title"].to_s, "claim" => s["claim"].to_s,
@@ -369,7 +379,7 @@ def pw_run(site, llm, run_no)
     sleep 1
   end
   page = body.to_s.length > 200 ? body.to_s : page
-  s = score(r[:answer], page, thinking_leak: r[:thinking_leak])
+  s = score(r[:answer], page, thinking_leak: r[:thinking_leak], son_url: final_url)
   pw.stop
   { "site" => site[:name], "tool" => "playwright", "run" => run_no, "pass" => s["ok"],
     "reason" => s["class"], "title" => s["title"].to_s, "claim" => s["claim"].to_s,
