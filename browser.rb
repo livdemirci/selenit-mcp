@@ -851,6 +851,33 @@ class SelenitBrowser
     false
   end
 
+  # AJAX aramasında URL değişmeyebilir; sayfanın aramayı GERÇEKTEN yaptığını
+  # başka sinyallerden anla: başlıkta aranan terim, ya da arama/sonuç ifadesi.
+  # Site-nötr: yalnızca başlık/metin ve aranan terim karşılaştırılır.
+  def arama_yapildi_mi?(terim)
+    t = terim.to_s.strip
+    return false if t.length < 2
+
+    baslik = driver.title.to_s.downcase
+    return true if baslik.include?(t.downcase[0, 25])
+
+    # Başlıkta "arama|sonuç|results|search" + terimin bir parçası
+    return true if baslik.match?(/arama|sonuç|results?|search/i) && baslik.include?(t.downcase[0, 10])
+
+    # Son çare: sayfada terim geçiyor mu (kısa pencere — pahalı olmasın)
+    begin
+      driver.execute_script(<<~JS, t.downcase[0, 30] ? true : false)
+        var n = arguments[0];
+        var m = (document.body ? document.body.innerText : '').toLowerCase();
+        return m.indexOf(n) >= 0;
+      JS
+    rescue StandardError
+      false
+    end
+  rescue StandardError
+    false
+  end
+
   def varsayilan_giris_alani
     index = driver.execute_script(GIRIS_ALANI_JS)
     return nil if index.nil?
@@ -999,8 +1026,26 @@ class SelenitBrowser
           if (submit_click = js_submit_click(element))
             # Koşulsuz sleep yerine explicit wait: URL DEĞİŞENE kadar bekle
             # (Zhan: hazır olma koşulunu ölç, süre tahmin etme).
-            wait_until(timeout: 2.0) { driver.current_url.to_s != url_before_type.to_s }
-            cozuldu = driver.current_url != url_before_type && arama_sonucu_sayfasi?(text)
+            #
+            # ÖLÇÜLDÜ (github, gemma-4-e4b): GitHub aramayı AJAX ile YAPAR,
+            # URL değişmez. Aşağıdaki bekleme korumasızdı ve 2 sn sonra
+            # TimeoutError fırlatıyordu; istisna type() dışına kaçıp
+            # "koşul 2.0s içinde sağlanmadı" olarak modele dönüyordu —
+            # oysa yazma ÇALIŞMIŞTI. AJAX aramalarda URL değişmez; bu bir
+            # başarısızlık değil, farklı bir başarı biçimidir.
+            begin
+              wait_until(timeout: 2.0) { driver.current_url.to_s != url_before_type.to_s }
+            rescue Selenium::WebDriver::Error::TimeoutError
+              # URL değişmedi: AJAX arama olabilir. Sayfa başlığı aranan
+              # terimi ya da "arama/sonuç" sinyalini gösteriyorsa başarılı say.
+              nil
+            end
+            cozuldu = if driver.current_url != url_before_type && arama_sonucu_sayfasi?(text)
+                        true
+                      else
+                        # AJAX araması: URL sabit ama başlık/metin aramayı gösteriyor mu?
+                        arama_yapildi_mi?(text)
+                      end
           end
           # 2) hâlâ değişmediyse: URL şemasıyla arama (JS event yutuluyorsa)
           unless cozuldu
@@ -1266,8 +1311,16 @@ class SelenitBrowser
         // erişilebilirlik sinyali — site-nötr.
         if (e_rol !== rol && !(rol === 'searchbox' && e_rol === 'textbox' && arama_sinyali(e))) continue;
         var r = e.getBoundingClientRect();
-        // Yalnızca görünür öğeler (gizli dialog/iframe içeriği eşleşmesin)
-        if (r.width <= 0 && r.height <= 0) continue;
+        // YALNIZCA GERÇEKTEN GÖRÜNÜR öğeler.
+        // ÖLÇÜLDÜ (github, gemma-4-e4b): eski kontrol "width<=0 && height<=0"
+        // idi; r5 diye görünmez (display:none olmayan ama ekranda olmayan) bir
+        // bağlantı döndü ve model tıklayamadı. Tek eksen 0 olması da yeterli
+        // değil: görünürlük + ekran içinde olma da gerekli.
+        if (r.width <= 0 || r.height <= 0) continue;
+        var st = window.getComputedStyle(e);
+        if (st.visibility === 'hidden' || st.display === 'none' || parseFloat(st.opacity) === 0) continue;
+        // Ekran dışındaysa (üst/alt taşma) yine de modele verilebilir ama
+        // tıklanamaz; scrollIntoView ile getirilebiliyorsa kabul et.
         var adi = erisilebilir_ad(e).toLowerCase();
         if (!ad) { tam.push({ e: e, adi: adi }); continue; }
         if (adi === ad) tam.push({ e: e, adi: adi });
@@ -1279,7 +1332,12 @@ class SelenitBrowser
         var el = sec[k].e;
         el.scrollIntoView({ block: 'center', inline: 'center' });
         var ref = 'r' + (out.length + 1);
-        el.setAttribute('data-sl-ref', ref);
+        // AYRI ATTRIBUTE — ÖLÇÜLDÜ (github): rol araması 'r1' yazıyordu, ama
+        // snapshot aynı öğeye 'e1' atayınca aynı data-sl-ref attribute'u
+        // ÜZERİNE YAZILIYOR ve 'r1' kayboluyordu ("koşul 2.0s içinde
+        // sağlanmadı"). İki ref sistemi çakışmasın diye rol refleri kendi
+        // attribute'unda tutulur.
+        el.setAttribute('data-sl-roref', ref);
         out.push({ ref: ref, tag: el.tagName.toLowerCase(), role: rol, name: sec[k].adi.slice(0, 80) });
       }
       return out;
@@ -1588,7 +1646,7 @@ class SelenitBrowser
     if action.to_s == "main"
       driver.switch_to.default_content
     else
-      if ref.to_s.empty? && selector.to_s.match?(/\A[ef]\d+\z/)
+      if ref.to_s.empty? && selector.to_s.match?(/\A[efr]\d+\z/)
         ref = selector
         selector = nil
       end
@@ -2497,14 +2555,24 @@ class SelenitBrowser
           hunts = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
           if hunts >= FAILFAST_PRESENCE &&
              driver.execute_script("return document.readyState") == "complete"
+            # SEÇİCİ UYDURMA UYARISI — ÖLÇÜLDÜ (github, gemma-4-e4b):
+            # model `#search-input` uydurdu (sayfada öyle bir id yok), hata
+            # aldı, sonra rastgele ref'lerle devam etti. Modele "bu seçici
+            # sende yok, uydurma" demek yetmiyor; ONDAN ALINMASI gerektiğini
+            # söylemek gerekiyor.
+            uyari = if selector.to_s == ""
+                      "Bu bir REF (#{ref}) — ESKİ snapshot'a ait olabilir. " \
+                      "ÖNCE browser_snapshot çağır ve GÜNCEL ref'leri kullan; aynı ref'i tekrar deneme. "
+                    else
+                      "Bu bir CSS SEÇİCİ (#{selector}). Sayfada böyle bir öğe YOK — " \
+                      "seçiciyi SEN UYDURMUŞ olabilirsin. Seçici tahmin etme: " \
+                      "browser_snapshot çağır ve dönen ref'i kullan, ya da " \
+                      "browser_find(role:, name:) ile hedefle. "
+                    end
             raise Selenium::WebDriver::Error::TimeoutError,
-                  "seçici DOM'da hiç bulunmadı (#{hunts.round(1)} sn'de, sayfa yüklü): #{ref || selector} — " \
-                  # Ref verilmişse ve DOM'da hiç yoksa en olası neden: sayfa bir ara \
-                  # değişti (navigate/404) ve ref ESKİ sayfaya ait. Model bunu \
-                  # bilmezse aynı ref'i sırayla deneyip adımları boşa yakar \
-                  # (ölçüm: e17/e19 dört kez denendi). \
-                  "#{ref.to_s =~ /\Ae\d+\z/ ? "Bu ref ESKİ bir snapshot'a ait olabilir (sayfa değişmiş ya da 404'e düşmüş). ÖNCE browser_snapshot çağır ve GÜNCEL ref'leri kullan; aynı ref'i tekrar deneme. " : ''}" \
-                  "seçiciyi doğrula (browser_snapshot / browser_find) veya BROWSER_MCP_FAILFAST'i büyüt"
+                  "öğe DOM'da hiç bulunmadı (#{hunts.round(1)} sn'de, sayfa yüklü): #{ref || selector} — " \
+                  "#{uyari}" \
+                  "BROWSER_MCP_FAILFAST'i büyütmek yalnızca yavaş yüklenen sayfalarda işe yarar."
           end
           false
         end
@@ -2512,7 +2580,7 @@ class SelenitBrowser
     rescue Selenium::WebDriver::Error::TimeoutError
       # Gemma koşusundan: ref alanına etiket metni yazılmıştı (ref="Sepete Ekle").
       # Küçük modelleri doğru parametreye yönlendir.
-      if ref && text.to_s.empty? && selector.to_s.empty? && ref.to_s !~ /\A[ef]\d+\z/
+      if ref && text.to_s.empty? && selector.to_s.empty? && ref.to_s !~ /\A[efr]\d+\z/
         raise Selenium::WebDriver::Error::TimeoutError,
               "'#{ref.to_s.slice(0, 40)}' bir ref değil; etiket metnine benziyor. " \
               "Metne göre seçmek için text: parametresini kullan (ör. browser_click(text: \"#{ref.to_s.slice(0, 20)}\")) " \
@@ -2711,6 +2779,9 @@ class SelenitBrowser
     function find(root, ref) {
       var el = root.querySelector('[data-sl-ref="' + ref + '"]');
       if (el) return el;
+      // Rol refleri ayrı attribute'ta tutulur (bkz. find_role).
+      el = root.querySelector('[data-sl-roref="' + ref + '"]');
+      if (el) return el;
       var hosts = root.querySelectorAll('*');
       for (var i = 0; i < hosts.length; i++) {
         if (hosts[i].shadowRoot) {
@@ -2868,7 +2939,12 @@ class SelenitBrowser
       var t = (arguments[0] || '').toLowerCase().trim();
       var max = arguments[1] || 5;
       function clear(root) {
-        root.querySelectorAll('[data-sl-ref]').forEach(function (el) { el.removeAttribute('data-sl-ref'); });
+        // Yalnızca bu taramanın öneki ('f') ve snapshot'ın ('e') temizlenir.
+        // 'r' (rol araması) korunur — bkz. snapshot.js'teki aynı düzeltme.
+        root.querySelectorAll('[data-sl-ref]').forEach(function (el) {
+          var v = el.getAttribute('data-sl-ref') || '';
+          if (/^[ef]\\d+$/.test(v)) el.removeAttribute('data-sl-ref');
+        });
         root.querySelectorAll('[data-sl-name]').forEach(function (el) { el.removeAttribute('data-sl-name'); el.removeAttribute('data-sl-href'); });
         root.querySelectorAll('*').forEach(function (el) { if (el.shadowRoot) clear(el.shadowRoot); });
       }

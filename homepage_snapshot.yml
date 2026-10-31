@@ -1,0 +1,20 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - heading "www.npmjs.com" [level=1] [ref=e5]
+      - heading "Güvenlik doğrulaması yapılıyor" [level=2] [ref=e6]
+      - paragraph [ref=e7]: Bu web sitesi, kötü niyetli botlara karşı korunmak için bir güvenlik hizmeti kullanıyor. Web sitesi bir bot olmadığınızı doğrularken bu sayfa görüntülenir.
+  - contentinfo [ref=e14]:
+    - generic [ref=e16]:
+      - generic [ref=e18]:
+        - text: "Ray ID:"
+        - code [ref=e19]: a530f96f2b46b63b
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - link "Cloudflare, yeni sekmede açılır" [ref=e22] [cursor=pointer]:
+            - /url: https://www.cloudflare.com?utm_source=challenge&utm_campaign=m
+            - text: Cloudflare
+          - text: ile Performans ve Güvenlik
+        - link "Gizlilik, yeni sekmede açılır" [ref=e24] [cursor=pointer]:
+          - /url: https://www.cloudflare.com/privacypolicy/
+          - text: Gizlilik

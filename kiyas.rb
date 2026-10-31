@@ -127,6 +127,17 @@ end
 # --- scoring: a claimed title must actually exist in the page text ---------
 def norm(s) = s.to_s.downcase.gsub(/[^\p{Alnum}\p{Space}]/, " ").gsub(/\s+/, " ").strip
 
+# ŞABLON ARTIKLARI — modele verilen "title | url" biçiminin kendisi.
+# ÖLÇÜLDÜ (npm, gemma-4-e4b): model şablonu birebir kopyalayıp "title | url"
+# döndürdü; ölçüt "title" kelimesini başlık sanıp "hallucinated" dedi.
+# Oysa model aramayı doğru yapmıştı (sayfa başlığı: "selenium - npm search").
+# Bu kelimeler ASLA başlık adayı olamaz.
+SABLON_ARTIKLARI = %w[title url baslik başlık link href adres sonuc sonuç heading result].freeze
+
+def sablon_mu?(s)
+  norm(s).split.all? { |k| SABLON_ARTIKLARI.include?(k) }
+end
+
 def candidates(answer)
   c = answer.to_s
   out = []
@@ -135,7 +146,10 @@ def candidates(answer)
   c.scan(/'([^']{8,140})'/) { |m| out << m[0] }
   c.scan(/(?:title|heading|result|başlık|sonuç)\s*(?:is|was)?\s*[:：]\s*(.{8,180})/i) { |m| out << m[0] }
   c.split("|").each { |p| out << p if p.strip.length >= 8 }
-  out.map { |a| a.to_s.gsub(/[*_`]/, "").gsub(/\s+/, " ").strip }.reject { |a| a.length < 8 }.uniq
+  out.map { |a| a.to_s.gsub(/[*_`]/, "").gsub(/\s+/, " ").strip }
+     .reject { |a| a.length < 8 }
+     .reject { |a| sablon_mu?(a) }
+     .uniq
 end
 
 FAIL_RE = /could not|couldn't|unable|failed|not found|i can't|cannot|tamamlayamad|bulunamad|ulaşamad|başarısız/i
@@ -156,6 +170,20 @@ def score(answer, page, thinking_leak: false)
   return { "ok" => false, "class" => "page_unreadable" } if pn.length < 50
 
   cand = candidates(c)
+
+  # URL KANITI — ÖLÇÜLDÜ (hurriyet, gemma-4-e4b): model "title | <doğru URL>"
+  # döndürdü; başlık alanını doldurmadı ama URL sonuç sayfasının ta kendisiydi
+  # ve sayfa başlığı da doğruydu. Yalnızca başlık metnine bakmak bu gerçek
+  # başarıyı "hallucinated" sayıyordu. Cevaptaki URL sayfada geçiyorsa
+  # (adres çubuğu ya da içerik) kanıt sayılır: model doğru sayfaya gitmiş.
+  cevap_url = c[%r{https?://[^\s\)\]\}"']+}]
+  if cevap_url && !cevap_url.empty?
+    temiz_url = cevap_url.sub(%r{/+$}, "")
+    if pn.include?(norm(temiz_url)) || norm(page).include?(norm(temiz_url.split("/").last.to_s))
+      return { "ok" => true, "class" => "verified_url", "title" => temiz_url[0, 90] }
+    end
+  end
+
   return { "ok" => false, "class" => "title_unparsable" } if cand.empty?
 
   pw = pn.split

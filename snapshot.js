@@ -99,9 +99,18 @@ return (function (maxElements) {
     return !!(el.tagName && el.tagName.indexOf('-') > 0 && /search|such|arama/i.test(el.tagName));
   }
 
+  // YALNIZCA BU SNAPSHOT'UN ÜRETTİĞİ ref'leri temizle (e1, e2, ...).
+  //
+  // ÖLÇÜLDÜ (github, gemma-4-e4b): browser_find(role:) 'r1','r2' ref'leri
+  // üretiyor; snapshot çağrıldığında aşağıdaki eski hâl TÜM data-sl-ref
+  // değerlerini siliyordu. Model find'dan aldığı ref'i kullanamıyor,
+  // "koşul 2.0s içinde sağlanmadı" alıyordu. Artık 'e' ile başlayanlar
+  // silinir; 'f' (metin araması) ve 'r' (rol araması) korunur — onlar
+  // find'ın ürettiği ve modele verildiği gibi geçerli kalmalı.
   function clearRefs(root) {
     root.querySelectorAll('[data-sl-ref]').forEach(function (el) {
-      el.removeAttribute('data-sl-ref');
+      var v = el.getAttribute('data-sl-ref') || '';
+      if (/^e\d+$/.test(v)) el.removeAttribute('data-sl-ref');
     });
     root.querySelectorAll('*').forEach(function (el) {
       if (el.shadowRoot) clearRefs(el.shadowRoot);
